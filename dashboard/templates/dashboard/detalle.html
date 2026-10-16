@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle {{ instalacion.nombre }} - AquaPlants</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success mb-4 shadow-sm">
+        <div class="container">
+            <!-- El enlace del logo ahora apunta de vuelta al inicio de forma segura -->
+            <a class="navbar-brand" href="{% url 'inicio_dashboard' %}">🌱 AquaPlants</a>
+            <div class="d-flex text-white align-items-center">
+                <span class="me-3">Sesión de: <strong>{{ usuario.username }}</strong></span>
+                <a href="/admin/logout/" class="btn btn-outline-light btn-sm">Cerrar Sesión</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Cabecera dinámica -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Panel de Control: <span class="text-success">{{ instalacion.nombre }}</span></h2>
+            <a href="{% url 'inicio_dashboard' %}" class="btn btn-outline-secondary">Volver al Monitor</a>
+        </div>
+
+        <div class="row">
+            <!-- Columna Izquierda: Sensores Instalados -->
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-dark text-white">
+                        ⚙️ Sensores Activos
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        <!-- Iteramos sobre los sensores asociados a esta instalación -->
+                        {% for sensor in sensores %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ sensor.tipo }}
+                            <span class="badge bg-success rounded-pill">OK</span>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-muted">No hay sensores registrados.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Tabla de las Últimas Mediciones -->
+            <div class="col-md-8 mb-4">
+                
+                <!-- NUEVO: Tarjeta del Gráfico -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-dark text-white">
+                        📈 Tendencia de Temperatura en Tiempo Real
+                    </div>
+                    <div class="card-body">
+                        <!-- Aquí es donde Chart.js dibujará la magia -->
+                        <canvas id="graficoTelemetria" height="100"></canvas>
+                    </div>
+                </div>
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <span>📊 Últimas 20 Mediciones</span>
+                        <span class="badge bg-light text-success">En vivo</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fecha y Hora</th>
+                                        <th>Sensor</th>
+                                        <th>Valor</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Iteramos sobre los datos inyectados por tu script -->
+                                    {% for medicion in mediciones %}
+                                    <tr>
+                                        <!-- Formateamos la fecha para que sea legible -->
+                                        <td>{{ medicion.timestamp|date:"d/m/Y H:i:s" }}</td>
+                                        <td>{{ medicion.sensor.tipo }}</td>
+                                        <td><strong>{{ medicion.valor }}</strong></td>
+                                        <td>
+                                            <!-- Lógica visual: Si la conexión es True, es verde. Si es False, es rojo -->
+                                            {% if medicion.estado_conexion %}
+                                                <span class="badge bg-success">Conectado</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Fallo</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-3">Esperando datos del simulador IoT...</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- 2. Nuestro script personalizado -->
+    <script>
+        // Extraemos las etiquetas (horas) y los valores (grados) desde Django
+        // Usamos 'reversed' para que el gráfico se lea de más antiguo a más reciente
+        const etiquetasTiempo = [
+            {% for medicion in mediciones reversed %}
+                "{{ medicion.timestamp|date:'H:i:s' }}",
+            {% endfor %}
+        ];
+
+        const datosTemperatura = [
+            {% for medicion in mediciones reversed %}
+                {{ medicion.valor|safe }},
+            {% endfor %}
+        ];
+
+        // Configuramos y dibujamos el gráfico
+        const ctx = document.getElementById('graficoTelemetria').getContext('2d');
+        const grafico = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: etiquetasTiempo,
+                datasets: [{
+                    label: 'Temperatura (°C)',
+                    data: datosTemperatura,
+                    borderColor: '#198754', // Verde estilo Bootstrap
+                    backgroundColor: 'rgba(25, 135, 84, 0.2)', // Fondo semitransparente
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#198754',
+                    fill: true,
+                    tension: 0.3 // Hace que la línea sea curva y elegante
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false // Para que el gráfico se adapte a las fluctuaciones de 18° a 26°
+                    }
+                }
+            }
+        });
+    </script>
+
+<!-- 1. Cargamos la librería Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- 2. Nuestro script personalizado -->
+    <script>
+        // ... (todo el código del gráfico que te envié) ...
+    </script>
+</body>
+</html>

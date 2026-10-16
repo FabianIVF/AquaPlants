@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AquaPlants</title>
+    <!-- Integración de Bootstrap 5 para el diseño -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Barra de navegación (Navbar) -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success mb-4 shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="#">🌱 AquaPlants</a>
+            <div class="d-flex text-white align-items-center">
+                <!-- Inyectamos el nombre del usuario logueado de forma segura -->
+                <span class="me-3">Sesión de: <strong>{{ usuario.username }}</strong></span>
+                <!-- Botón temporal de cierre de sesión apuntando al admin -->
+                <a href="/admin/logout/" class="btn btn-outline-light btn-sm">Cerrar Sesión</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenedor Principal -->
+    <div class="container">
+        <h2 class="mb-4">Monitor de Sistemas Activos</h2>
+        
+        <div class="row">
+            <!-- Bucle de seguridad de Django: Iteramos sobre los datos autorizados -->
+            {% for instalacion in instalaciones %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm border-0 border-start border-success border-4">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">{{ instalacion.nombre }}</h5>
+                        <p class="card-text text-muted small">
+                            📍 Ubicación: {{ instalacion.ubicacion }}<br>
+                            📅 Alta: {{ instalacion.fecha_creacion|date:"d M Y" }}
+                        </p>
+                        <a href="{% url 'detalle_instalacion' instalacion.pk %}" class="btn btn-success btn-sm w-100">Ver Sensores y Alertas</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ¿Qué pasa si no hay datos o el atacante borró todo? El empty nos protege de errores visuales -->
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-warning shadow-sm">
+                    ⚠️ No hay instalaciones de cultivo activas registradas en tu perfil en este momento.
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</body>
+</html>
+
