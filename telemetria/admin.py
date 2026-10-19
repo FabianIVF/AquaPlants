@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Instalacion, Sensor, Medicion
+from .models import Instalacion, Sensor, Medicion, ReglaAlerta, AlertaGenerada
+
 
 @admin.register(Instalacion) # Decorador para hacer publica la tabla dentro del panel
 class InstalacionAdmin(admin.ModelAdmin):
@@ -15,3 +16,6 @@ class SensorAdmin(admin.ModelAdmin):
 class MedicionAdmin(admin.ModelAdmin):
     list_display = ('sensor', 'valor', 'timestamp', 'estado_conexion') # list_display: define que columnas de la tabla se monstraran en la tabla visual
     list_filter = ('sensor__tipo', 'timestamp', 'estado_conexion')# Agrega filtros laterales
+
+admin.site.register(ReglaAlerta)
+admin.site.register(AlertaGenerada)

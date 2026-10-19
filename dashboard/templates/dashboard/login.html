@@ -1,45 +1,44 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Sesión - AquaPlants</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-light d-flex align-items-center" style="height: 100vh;">
+<body class="bg-dark text-light d-flex align-items-center" style="height: 100vh;">
 
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-md-5">
-                <div class="card shadow border-0 border-top border-success border-4">
+            <div class="col-md-5 col-lg-4">
+                <div class="card bg-dark-subtle border-secondary shadow-lg rounded-4 border-top border-success border-4">
                     <div class="card-body p-5">
                         <div class="text-center mb-4">
-                            <h2 class="text-success">🌱 AquaPlants</h2>
-                            <p class="text-muted">Acceso a Telemetría</p>
+                            <a class="navbar-brand" href="{% url 'inicio_dashboard' %}">
+                                <img src="{% static 'Icono.png' %}" alt="Logo AquaPlants" height="55" class="d-inline-block align-text-top">
+                            </a>
+                            <p class="text-secondary small text-uppercase fw-semibold tracking-wider">Acceso Seguro a Telemetría</p>
+                            <hr class="border-secondary opacity-50">
                         </div>
 
-                        <!-- Formulario de Autenticación -->
                         <form method="POST">
-                            <!-- Token de Ciberseguridad: Previene ataques CSRF -->
                             {% csrf_token %}
                             
-                            <!-- Imprimimos los campos del formulario que genera Django automáticamente -->
                             {% for field in form %}
                             <div class="mb-3">
-                                <label class="form-label">{{ field.label }}</label>
-                                <!-- Le damos clases de Bootstrap a los inputs -->
+                                <label class="form-label text-light fw-bold">{{ field.label }}</label>
                                 {{ field }}
                             </div>
                             {% endfor %}
 
-                            <!-- Mensajes de error si se equivocan de clave -->
                             {% if form.errors %}
-                            <div class="alert alert-danger p-2 small mt-3">
+                            <div class="alert alert-danger p-2 small mt-3 bg-danger bg-opacity-10 border-danger text-danger text-center shadow-sm">
                                 Usuario o contraseña incorrectos.
                             </div>
                             {% endif %}
 
-                            <button type="submit" class="btn btn-success w-100 mt-3">Ingresar al Dashboard</button>
+                            <button type="submit" class="btn btn-success w-100 mt-4 fw-bold shadow-sm">Ingresar al Dashboard</button>
                         </form>
                     </div>
                 </div>
@@ -47,5 +46,12 @@
         </div>
     </div>
 
+    <script>
+        document.querySelectorAll('input').forEach(input => {
+            if (input.type !== 'hidden') {
+                input.classList.add('form-control', 'bg-dark', 'text-light', 'border-secondary', 'shadow-sm');
+            }
+        });
+    </script>
 </body>
 </html>

@@ -51,3 +51,24 @@ class Medicion(models.Model):
 
     def __str__(self):
         return f"{self.sensor.tipo}: {self.valor} a las {self.timestamp}"
+
+class ReglaAlerta(models.Model):
+    # Conectamos la regla a un sensor específico
+    sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE, related_name='reglas')
+    limite_minimo = models.FloatField(null=True, blank=True, help_text="Avisa si baja de este valor")
+    limite_maximo = models.FloatField(null=True, blank=True, help_text="Avisa si sube de este valor")
+    activa = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Regla de alerta para el sensor: {self.sensor}"
+
+class AlertaGenerada(models.Model):
+    # Guardamos qué regla se rompió y con qué medición exacta
+    regla = models.ForeignKey(ReglaAlerta, on_delete=models.CASCADE)
+    medicion = models.ForeignKey('Medicion', on_delete=models.CASCADE)
+    mensaje = models.CharField(max_length=200)
+    leida = models.BooleanField(default=False) # Para que el usuario pueda marcarla como "vista"
+    fecha_generacion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"[{self.fecha_generacion.strftime('%H:%M:%S')}] {self.mensaje}"
