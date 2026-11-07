@@ -42,4 +42,4 @@ class MedicionViewSet(viewsets.ModelViewSet):
                     medicion=medicion_guardada,
                     mensaje=mensaje_alerta
                 )
-        # ------------------------
+

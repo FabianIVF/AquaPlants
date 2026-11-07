@@ -1,4 +1,7 @@
 venv/
+python311/
 __pycache__/
 *.pyc
 .env
+staticfiles/
+*.sqlite3
