@@ -1,0 +1,221 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial — {{ instalacion.nombre }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0d1117; }
+        .card-custom { border: 1px solid #30363d; background: #161b22; border-radius: 10px; }
+        .card-header-custom { background: #0d1117; border-bottom: 1px solid #30363d; }
+        .estado-card { border-radius: 12px; border: 1px solid #30363d; background: #161b22; }
+        .valor-actual { font-size: 2rem; font-weight: 700; }
+        .tabla-hist td, .tabla-hist th { font-size: 0.82rem; }
+        .badge-tipo { text-transform: capitalize; }
+    </style>
+</head>
+<body class="text-light">
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-dark mb-4 shadow border-bottom border-secondary">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a class="navbar-brand" href="{% url 'inicio_dashboard' %}">
+                <img src="{% static 'Icono.png' %}" alt="AquaPlants" height="48">
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-secondary small">Sesión: <strong class="text-light">{{ usuario.username }}</strong></span>
+                <a href="/logout/" class="btn btn-outline-danger btn-sm">Cerrar Sesión</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+
+        <!-- Encabezado -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+            <div>
+                <h2 class="fw-bold mb-0">📊 Historial — <span class="text-success">{{ instalacion.nombre }}</span></h2>
+                <small class="text-secondary">Estados actuales y registro histórico de mediciones · 📍 {{ instalacion.ubicacion }}</small>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'detalle_instalacion' instalacion.pk %}" class="btn btn-outline-info btn-sm">⚡ Ver en Vivo</a>
+                <a href="{% url 'inicio_dashboard' %}" class="btn btn-outline-secondary btn-sm">⬅ Volver</a>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════
+             RESUMEN DE ALERTAS
+        ═══════════════════════════════════════ -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="estado-card text-center p-3">
+                    <div class="text-secondary small fw-bold">SENSORES ACTIVOS</div>
+                    <div class="valor-actual text-success">{{ estados_actuales|length }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="estado-card text-center p-3">
+                    <div class="text-secondary small fw-bold">ALERTAS SIN LEER</div>
+                    <div class="valor-actual {% if alertas_sin_leer > 0 %}text-danger{% else %}text-success{% endif %}">
+                        {{ alertas_sin_leer }}
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="estado-card text-center p-3">
+                    <div class="text-secondary small fw-bold">TOTAL ALERTAS</div>
+                    <div class="valor-actual text-warning">{{ total_alertas }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="estado-card text-center p-3">
+                    <div class="text-secondary small fw-bold">ESTADO SISTEMA</div>
+                    <div class="valor-actual {% if instalacion.activa %}text-success{% else %}text-danger{% endif %}">
+                        {% if instalacion.activa %}🟢{% else %}🔴{% endif %}
+                    </div>
+                    <small class="text-secondary">{% if instalacion.activa %}Operativo{% else %}Inactivo{% endif %}</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════
+             ESTADO ACTUAL POR SENSOR
+        ═══════════════════════════════════════ -->
+        <div class="card card-custom mb-4">
+            <div class="card-header card-header-custom py-3">
+                <span class="fw-bold text-success">🔴 Estado Actual de Sensores</span>
+                <small class="text-secondary ms-2">Última lectura registrada por cada sensor</small>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for item in estados_actuales %}
+                    {% with sensor=item.sensor med=item.ultima_medicion %}
+                    <div class="col-6 col-md-3">
+                        <div class="estado-card p-3 text-center h-100">
+                            <div class="fw-bold text-uppercase small text-secondary mb-1">
+                                {% if sensor.tipo == "temperatura" %}🌡️{% elif sensor.tipo == "humedad" %}💧{% elif sensor.tipo == "ph" %}🧪{% else %}🌊{% endif %}
+                                {{ sensor.tipo }}
+                            </div>
+                            {% if med %}
+                                <div class="valor-actual
+                                    {% if sensor.tipo == 'temperatura' %}text-warning
+                                    {% elif sensor.tipo == 'humedad' %}text-info
+                                    {% elif sensor.tipo == 'ph' %}text-purple
+                                    {% else %}text-cyan{% endif %}
+                                " style="
+                                    {% if sensor.tipo == 'temperatura' %}color:#ff7043!important
+                                    {% elif sensor.tipo == 'humedad' %}color:#29b6f6!important
+                                    {% elif sensor.tipo == 'ph' %}color:#ab47bc!important
+                                    {% else %}color:#26c6da!important{% endif %}
+                                ">
+                                    {{ med.valor }}
+                                </div>
+                                <small class="text-muted d-block">
+                                    {% if sensor.tipo == "temperatura" %}°C{% elif sensor.tipo == "humedad" %}%{% elif sensor.tipo == "ph" %}pH{% else %}L/min{% endif %}
+                                </small>
+                                <div class="mt-2">
+                                    {% if med.estado_conexion %}
+                                        <span class="badge bg-success">Conectado</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Fallo</span>
+                                    {% endif %}
+                                </div>
+                                <small class="text-secondary d-block mt-1" style="font-size:0.7rem;">
+                                    {{ med.timestamp|date:"d/m H:i:s" }}
+                                </small>
+                            {% else %}
+                                <div class="text-muted mt-2">Sin datos</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endwith %}
+                    {% empty %}
+                    <div class="col-12 text-center text-muted py-3">No hay sensores registrados en esta instalación.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════
+             HISTORIAL DE MEDICIONES (filtrable)
+        ═══════════════════════════════════════ -->
+        <div class="card card-custom mb-5">
+            <div class="card-header card-header-custom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <span class="fw-bold text-success">📋 Histórico de Mediciones</span>
+                    <small class="text-secondary ms-2">Últimas 100 lecturas registradas</small>
+                </div>
+                <!-- Filtro por tipo de sensor -->
+                <form method="get" class="d-flex gap-2 align-items-center">
+                    <label class="text-secondary small me-1 mb-0">Filtrar por sensor:</label>
+                    <select name="sensor" class="form-select form-select-sm bg-dark text-light border-secondary" style="width:auto;" onchange="this.form.submit()">
+                        <option value="">Todos los sensores</option>
+                        {% for tipo in tipos_sensor %}
+                        <option value="{{ tipo }}" {% if filtro_tipo == tipo %}selected{% endif %}>{{ tipo|capfirst }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if filtro_tipo %}
+                    <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-outline-secondary btn-sm">✕ Limpiar</a>
+                    {% endif %}
+                </form>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 tabla-hist">
+                        <thead class="table-active">
+                            <tr>
+                                <th>Fecha y Hora</th>
+                                <th>Sensor</th>
+                                <th>Valor</th>
+                                <th>Unidad</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in historico %}
+                            <tr>
+                                <td class="text-secondary">{{ m.timestamp|date:"d/m/Y H:i:s" }}</td>
+                                <td>
+                                    <span class="badge badge-tipo"
+                                        style="background:{% if m.sensor.tipo == 'temperatura' %}#ff7043{% elif m.sensor.tipo == 'humedad' %}#29b6f6{% elif m.sensor.tipo == 'ph' %}#ab47bc{% else %}#26c6da{% endif %};">
+                                        {% if m.sensor.tipo == "temperatura" %}🌡️{% elif m.sensor.tipo == "humedad" %}💧{% elif m.sensor.tipo == "ph" %}🧪{% else %}🌊{% endif %}
+                                        {{ m.sensor.tipo }}
+                                    </span>
+                                </td>
+                                <td><strong class="text-white">{{ m.valor }}</strong></td>
+                                <td class="text-secondary">
+                                    {% if m.sensor.tipo == "temperatura" %}°C{% elif m.sensor.tipo == "humedad" %}%{% elif m.sensor.tipo == "ph" %}pH{% else %}L/min{% endif %}
+                                </td>
+                                <td>
+                                    {% if m.estado_conexion %}
+                                        <span class="badge bg-success">Conectado</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Fallo</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-5">
+                                    No hay mediciones registradas{% if filtro_tipo %} para el sensor <strong>{{ filtro_tipo }}</strong>{% endif %}.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if historico %}
+                <div class="p-3 text-end">
+                    <small class="text-secondary">Mostrando {{ historico|length }} de las últimas 100 mediciones</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

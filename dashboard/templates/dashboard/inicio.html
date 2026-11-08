@@ -22,7 +22,7 @@
             </a>
             <div class="d-flex text-white align-items-center gap-3">
                 <span class="text-secondary small">Sesión de: <strong class="text-light">{{ usuario.username }}</strong></span>
-                <a href="/admin/logout/" class="btn btn-outline-danger btn-sm shadow-sm">Cerrar Sesión</a>
+                <a href="/logout/" class="btn btn-outline-danger btn-sm shadow-sm">Cerrar Sesión</a>
             </div>
         </div>
     </nav>
@@ -114,6 +114,9 @@
                         <div class="d-flex flex-column gap-2 mt-3">
                             <a href="{% url 'detalle_instalacion' instalacion.pk %}" class="btn btn-success btn-sm w-100 fw-bold">
                                 📊 Ver Sensores y Alertas
+                            </a>
+                            <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-outline-info btn-sm w-100">
+                                📈 Ver Historial
                             </a>
                             {% if perms.telemetria.change_instalacion or perms.telemetria.delete_instalacion %}
                             <div class="d-flex gap-2">

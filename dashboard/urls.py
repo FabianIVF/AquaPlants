@@ -18,4 +18,5 @@ urlpatterns = [
     
     # API Live
     path('instalacion/<str:instalacion_id>/live/', views.api_telemetria_live, name='api_telemetria_live'),
+    path('instalacion/<str:instalacion_id>/historial/', views.historial_instalacion, name='historial_instalacion'),
 ]

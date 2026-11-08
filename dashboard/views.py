@@ -247,3 +247,51 @@ def api_telemetria_live(request, instalacion_id):
         "alertas": alertas,
         "num_alertas": len(alertas),
     })
+
+
+# ============================================================
+# HISTORIAL: Estados actuales e históricos por instalación
+# ============================================================
+
+@login_required(login_url='login')
+def historial_instalacion(request, instalacion_id):
+    """
+    Vista de estados actuales (última medición por sensor) e histórico
+    completo de las últimas 100 mediciones con filtro por tipo de sensor.
+    """
+    instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
+    sensores = Sensor.objects.filter(instalacion=instalacion)
+
+    # Estado actual: última medición de cada sensor
+    estados_actuales = []
+    for sensor in sensores:
+        ultima = Medicion.objects.filter(sensor=sensor).order_by('-timestamp').first()
+        estados_actuales.append({
+            'sensor': sensor,
+            'ultima_medicion': ultima,
+        })
+
+    # Filtro por tipo de sensor
+    filtro_tipo = request.GET.get('sensor', '')
+    mediciones_qs = Medicion.objects.filter(sensor__in=sensores).select_related('sensor')
+    if filtro_tipo:
+        mediciones_qs = mediciones_qs.filter(sensor__tipo=filtro_tipo)
+    historico = mediciones_qs.order_by('-timestamp')[:100]
+
+    # Total de alertas de la instalación
+    total_alertas = AlertaGenerada.objects.filter(regla__sensor__in=sensores).count()
+    alertas_sin_leer = AlertaGenerada.objects.filter(regla__sensor__in=sensores, leida=False).count()
+
+    tipos_sensor = [s.tipo for s in sensores]
+
+    contexto = {
+        'instalacion': instalacion,
+        'estados_actuales': estados_actuales,
+        'historico': historico,
+        'filtro_tipo': filtro_tipo,
+        'tipos_sensor': tipos_sensor,
+        'total_alertas': total_alertas,
+        'alertas_sin_leer': alertas_sin_leer,
+        'usuario': request.user,
+    }
+    return render(request, 'dashboard/historial.html', contexto)

@@ -77,18 +77,18 @@ pip install -r requirements.txt
 1. Ve a la pestaña **Web** en PythonAnywhere.
 2. Haz clic en **Add a new web app** → **Manual configuration** → selecciona **Python 3.10**.
 3. Configura las secciones:
-   * **Virtualenv:** `/home/<tu_usuario>/.virtualenvs/aquaplants-venv`
-   * **Source code:** `/home/<tu_usuario>/WorkspaceAquaPlants`
-   * **Working directory:** `/home/<tu_usuario>/WorkspaceAquaPlants`
+   * **Virtualenv:** `/home/FabianVidal/.virtualenvs/aquaplants-venv`
+   * **Source code:** `/home/FabianVidal/WorkspaceAquaPlants`
+   * **Working directory:** ` `
    * **Static files:**
      * URL: `/static/`
-     * Directory: `/home/<tu_usuario>/WorkspaceAquaPlants/staticfiles`
+     * Directory: `/home/FabianVidal/AquaPlants/staticfiles`
 4. Edita el **WSGI configuration file** (enlace en la sección Code), borra su contenido y pega:
    ```python
    import os
    import sys
 
-   path = '/home/<tu_usuario>/WorkspaceAquaPlants'
+   path = '/home/FabianVidal/AquaPlants'
    if path not in sys.path:
        sys.path.append(path)
 
