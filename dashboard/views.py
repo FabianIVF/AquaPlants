@@ -5,7 +5,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.urls import reverse
 from django.http import JsonResponse
-from telemetria.models import Instalacion, Sensor, Medicion, AlertaGenerada, ReglaAlerta, asegurar_sensores_estandar
+from telemetria.models import Instalacion, Sensor, Medicion, AlertaGenerada, ReglaAlerta
 from .forms import InstalacionForm, ReglaAlertaForm
 
 
@@ -46,7 +46,6 @@ def inicio_dashboard(request):
 @login_required(login_url='login')
 def detalle_instalacion(request, instalacion_id):
     instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
-    asegurar_sensores_estandar(instalacion)
     sensores = Sensor.objects.filter(instalacion=instalacion, activo=True)
     mediciones = Medicion.objects.filter(sensor__in=sensores).order_by('-timestamp')[:20]
     reglas = ReglaAlerta.objects.filter(sensor__in=sensores).select_related('sensor')
@@ -72,7 +71,6 @@ def crear_instalacion(request):
         form = InstalacionForm(request.POST)
         if form.is_valid():
             nueva = form.save()
-            asegurar_sensores_estandar(nueva)
             messages.success(request, f'Instalación "{nueva.nombre}" creada exitosamente y variables configuradas.')
             return redirect('inicio_dashboard')
     else:
@@ -134,7 +132,6 @@ def eliminar_instalacion(request, instalacion_id):
 @permission_required('telemetria.add_reglaalerta', raise_exception=True)
 def crear_regla(request, instalacion_id):
     instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
-    asegurar_sensores_estandar(instalacion)
     if request.method == 'POST':
         form = ReglaAlertaForm(request.POST, instalacion=instalacion)
         if form.is_valid():
@@ -205,7 +202,6 @@ def api_telemetria_live(request, instalacion_id):
     y las últimas 5 alertas no leídas de la instalación.
     """
     instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
-    asegurar_sensores_estandar(instalacion)
     sensores = Sensor.objects.filter(instalacion=instalacion, activo=True)
 
     datos_sensores = {}
@@ -264,7 +260,6 @@ def historial_instalacion(request, instalacion_id):
     completo de las últimas 100 mediciones con filtro por tipo de sensor.
     """
     instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
-    asegurar_sensores_estandar(instalacion)
     sensores = Sensor.objects.filter(instalacion=instalacion, activo=True)
 
     # Estado actual: última medición de cada sensor

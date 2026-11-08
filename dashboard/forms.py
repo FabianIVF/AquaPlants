@@ -63,8 +63,8 @@ class InstalacionForm(forms.ModelForm):
                 activos.append('temperatura_aire')
             self.fields['sensores_seleccionados'].initial = activos
         else:
-            # En creación nueva, preseleccionar el kit estándar recomendado
-            self.fields['sensores_seleccionados'].initial = SENSORES_RECOMENDADOS_DEFAULT
+            # En creación nueva, el usuario elige explícitamente cuáles sensores activar
+            self.fields['sensores_seleccionados'].initial = []
 
     def save(self, commit=True):
         instalacion = super().save(commit=commit)
@@ -140,10 +140,19 @@ class ReglaAlertaForm(forms.ModelForm):
     def __init__(self, *args, instalacion=None, **kwargs):
         super().__init__(*args, **kwargs)
         if instalacion:
-            # Solo permitir configurar reglas para sensores que estén activos en esta instalación
-            self.fields['sensor'].queryset = Sensor.objects.filter(instalacion=instalacion, activo=True)
+            # Sensores activos exclusivos de ESTA instalación
+            base_qs = Sensor.objects.filter(instalacion=instalacion, activo=True)
+            
+            # Excluir sensores que ya tienen una regla configurada en este huerto
+            reglas_existentes = ReglaAlerta.objects.filter(sensor__instalacion=instalacion)
+            if self.instance and self.instance.pk:
+                reglas_existentes = reglas_existentes.exclude(pk=self.instance.pk)
+            sensores_con_regla = reglas_existentes.values_list('sensor_id', flat=True)
+
+            self.fields['sensor'].queryset = base_qs.exclude(id__in=sensores_con_regla)
+            self.fields['sensor'].empty_label = "--- Selecciona un sensor activo de este huerto ---"
             self.fields['sensor'].label_from_instance = (
-                lambda s: f"{s.get_icono()} {s.get_tipo_display()} [{s.get_unidad()}] — ({s.modelo_hardware})"
+                lambda s: f"{s.get_icono()} {s.get_tipo_display()} — ({s.modelo_hardware})"
             )
 
     def clean(self):

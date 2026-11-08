@@ -201,26 +201,11 @@ class AlertaGenerada(models.Model):
 
 
 # ============================================================
-# AUTO-APROVISIONAMIENTO BASE EN CASO DE INSTALACIONES SIN SENSORES
+# GESTIÓN EXPLÍCITA DE SENSORES
 # ============================================================
 def asegurar_sensores_estandar(instalacion):
     """
-    Si una instalación no tiene ningún sensor configurado, le habilita
-    el kit hidropónico inicial por defecto.
+    Función legada; ahora los sensores se configuran exclusivamente
+    según la elección del usuario en el formulario del huerto.
     """
-    kit_inicial = [
-        ('temperatura_agua', 'Sonda Sumergible DS18B20'),
-        ('temperatura_aire', 'Sensor Ambiental DHT22 / BME280'),
-        ('humedad', 'Sensor de Humedad DHT22'),
-        ('ph', 'Sonda pH Analógica V1.1'),
-        ('caudal', 'Flujómetro YF-S201'),
-    ]
-    sensores_existentes = set(instalacion.sensores.values_list('tipo', flat=True))
-    if not sensores_existentes:
-        for tipo, modelo in kit_inicial:
-            Sensor.objects.create(
-                instalacion=instalacion,
-                tipo=tipo,
-                modelo_hardware=modelo,
-                activo=True
-            )
+    pass
