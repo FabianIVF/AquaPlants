@@ -10,14 +10,8 @@ except ImportError:
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-+p#cpiotzzi(wd=zpz8&4-vf_2851+_&ma445x%+gln)!s2yi&')
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 't')
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', '.pythonanywhere.com', '*']

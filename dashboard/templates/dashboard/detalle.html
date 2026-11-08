@@ -177,9 +177,11 @@
                     <span class="fw-bold text-success">⚙️ Reglas de Alerta de esta Instalación</span>
                     <small class="text-secondary d-block">Umbrales automáticos de disparo de alertas para los sensores.</small>
                 </div>
+                {% if perms.telemetria.add_reglaalerta %}
                 <a href="{% url 'crear_regla' instalacion.pk %}" class="btn btn-outline-success btn-sm fw-bold">
                     ➕ Nueva Regla de Alerta
                 </a>
+                {% endif %}
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -224,12 +226,16 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end">
+                                    {% if perms.telemetria.change_reglaalerta %}
                                     <a href="{% url 'editar_regla' regla.id %}" class="btn btn-outline-warning btn-sm me-1">
                                         ✏️ Editar
                                     </a>
+                                    {% endif %}
+                                    {% if perms.telemetria.delete_reglaalerta %}
                                     <a href="{% url 'eliminar_regla' regla.id %}" class="btn btn-outline-danger btn-sm">
                                         🗑️ Eliminar
                                     </a>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% empty %}

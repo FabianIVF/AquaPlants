@@ -48,10 +48,12 @@
             </div>
             
             <div class="d-flex align-items-center gap-2">
-                <!-- BOTÓN CREAR INSTALACIÓN (CRUD) -->
+                <!-- BOTÓN CREAR INSTALACIÓN (Solo visible si tiene permiso) -->
+                {% if perms.telemetria.add_instalacion %}
                 <a href="{% url 'crear_instalacion' %}" class="btn btn-success btn-sm shadow-sm fw-bold">
                     ➕ Nueva Instalación
                 </a>
+                {% endif %}
 
                 <!-- SISTEMA DE ALERTAS (CAMPANITA) -->
                 <div class="dropdown">
@@ -113,14 +115,20 @@
                             <a href="{% url 'detalle_instalacion' instalacion.pk %}" class="btn btn-success btn-sm w-100 fw-bold">
                                 📊 Ver Sensores y Alertas
                             </a>
+                            {% if perms.telemetria.change_instalacion or perms.telemetria.delete_instalacion %}
                             <div class="d-flex gap-2">
+                                {% if perms.telemetria.change_instalacion %}
                                 <a href="{% url 'editar_instalacion' instalacion.pk %}" class="btn btn-outline-warning btn-sm flex-fill">
                                     ✏️ Editar
                                 </a>
+                                {% endif %}
+                                {% if perms.telemetria.delete_instalacion %}
                                 <a href="{% url 'eliminar_instalacion' instalacion.pk %}" class="btn btn-outline-danger btn-sm flex-fill">
                                     🗑️ Eliminar
                                 </a>
+                                {% endif %}
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

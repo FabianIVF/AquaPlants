@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
@@ -61,10 +61,11 @@ def detalle_instalacion(request, instalacion_id):
 
 
 # ============================================================
-# CRUD: INSTALACIONES
+# CRUD: INSTALACIONES (Protegido por permisos RBAC)
 # ============================================================
 
 @login_required(login_url='login')
+@permission_required('telemetria.add_instalacion', raise_exception=True)
 def crear_instalacion(request):
     if request.method == 'POST':
         form = InstalacionForm(request.POST)
@@ -85,6 +86,7 @@ def crear_instalacion(request):
 
 
 @login_required(login_url='login')
+@permission_required('telemetria.change_instalacion', raise_exception=True)
 def editar_instalacion(request, instalacion_id):
     instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
     if request.method == 'POST':
@@ -106,6 +108,7 @@ def editar_instalacion(request, instalacion_id):
 
 
 @login_required(login_url='login')
+@permission_required('telemetria.delete_instalacion', raise_exception=True)
 def eliminar_instalacion(request, instalacion_id):
     instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
     if request.method == 'POST':
@@ -122,10 +125,11 @@ def eliminar_instalacion(request, instalacion_id):
 
 
 # ============================================================
-# CRUD: REGLAS DE ALERTA
+# CRUD: REGLAS DE ALERTA (Protegido por permisos RBAC)
 # ============================================================
 
 @login_required(login_url='login')
+@permission_required('telemetria.add_reglaalerta', raise_exception=True)
 def crear_regla(request, instalacion_id):
     instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
     if request.method == 'POST':
@@ -147,6 +151,7 @@ def crear_regla(request, instalacion_id):
 
 
 @login_required(login_url='login')
+@permission_required('telemetria.change_reglaalerta', raise_exception=True)
 def editar_regla(request, regla_id):
     regla = get_object_or_404(ReglaAlerta, pk=regla_id)
     instalacion = regla.sensor.instalacion
@@ -169,6 +174,7 @@ def editar_regla(request, regla_id):
 
 
 @login_required(login_url='login')
+@permission_required('telemetria.delete_reglaalerta', raise_exception=True)
 def eliminar_regla(request, regla_id):
     regla = get_object_or_404(ReglaAlerta, pk=regla_id)
     instalacion_id = regla.sensor.instalacion.pk
