@@ -10,11 +10,24 @@ except ImportError:
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-+p#cpiotzzi(wd=zpz8&4-vf_2851+_&ma445x%+gln)!s2yi&')
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 't')
 
-DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 't')
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        import warnings
+        warnings.warn(
+            "SECRET_KEY no está configurada en las variables de entorno. "
+            "Se requiere configurar SECRET_KEY en producción. Se utiliza clave de desarrollo por defecto.",
+            RuntimeWarning
+        )
+    SECRET_KEY = 'django-insecure-+p#cpiotzzi(wd=zpz8&4-vf_2851+_&ma445x%+gln)!s2yi&'
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', '.pythonanywhere.com', '*']
+_allowed_hosts_env = os.getenv('ALLOWED_HOSTS')
+if _allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', '.pythonanywhere.com']
 
 
 # Application definition
@@ -45,7 +58,18 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False').lower() in ('true', '1', 't')
+
+if not CORS_ALLOW_ALL_ORIGINS:
+    _cors_origins_env = os.getenv('CORS_ALLOWED_ORIGINS')
+    if _cors_origins_env:
+        CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins_env.split(',') if o.strip()]
+    else:
+        CORS_ALLOWED_ORIGINS = [
+            'http://127.0.0.1:8000',
+            'http://localhost:8000',
+            'https://fabianvidal.pythonanywhere.com',
+        ]
 ROOT_URLCONF = 'AquaPlants.urls'
 
 TEMPLATES = [

@@ -1,4 +1,7 @@
+from io import StringIO
 from django.test import TestCase, Client
+from django.conf import settings
+from django.core.management import call_command
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -286,3 +289,37 @@ class FormulariosDashboardTestCase(TestCase):
         self.assertIn('temperatura_agua', activos)
         self.assertIn('caudal', activos)
         self.assertEqual(len(activos), 2)
+
+
+class SeguridadPunto6TestCase(TestCase):
+    """
+    Auditoría Técnica Punto 6 (Seguridad de la Sección 5.2):
+    - Configuración segura de ALLOWED_HOSTS, DEBUG, SECRET_KEY y CORS.
+    - Aprovisionamiento programático del dispositivo IoT y RBAC.
+    """
+    def test_settings_allowed_hosts_sin_comodin(self):
+        """Verifica que ALLOWED_HOSTS no contenga el comodín '*' inseguro y tenga los hosts permitidos."""
+        self.assertNotIn('*', settings.ALLOWED_HOSTS)
+        self.assertIn('127.0.0.1', settings.ALLOWED_HOSTS)
+        self.assertIn('localhost', settings.ALLOWED_HOSTS)
+        self.assertIn('.pythonanywhere.com', settings.ALLOWED_HOSTS)
+
+    def test_settings_cors_no_permite_todos_los_origenes_por_defecto(self):
+        """Verifica que CORS_ALLOW_ALL_ORIGINS sea False y existan orígenes seguros configurados."""
+        self.assertFalse(settings.CORS_ALLOW_ALL_ORIGINS)
+        self.assertTrue(hasattr(settings, 'CORS_ALLOWED_ORIGINS'))
+        self.assertIn('https://fabianvidal.pythonanywhere.com', settings.CORS_ALLOWED_ORIGINS)
+
+    def test_setup_roles_aprovisiona_dispositivo_iot(self):
+        """El comando setup_roles debe crear/actualizar el usuario iot_device y asignarle permisos de telemetría."""
+        out = StringIO()
+        call_command('setup_roles', stdout=out)
+        self.assertIn('Políticas de autorización aplicadas correctamente', out.getvalue())
+
+        user_iot = User.objects.filter(username='iot_device').first()
+        self.assertIsNotNone(user_iot)
+        self.assertTrue(user_iot.has_perm('telemetria.add_medicion'))
+        self.assertTrue(user_iot.has_perm('telemetria.view_sensor'))
+        self.assertTrue(user_iot.has_perm('telemetria.view_instalacion'))
+        self.assertTrue(user_iot.groups.filter(name='Dispositivo IoT').exists())
+

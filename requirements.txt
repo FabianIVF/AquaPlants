@@ -1,10 +1,19 @@
-asgiref==3.12.1
-Django==5.2.17
-djangorestframework==3.18.1
-mysqlclient==2.3.0
-PyMySQL==1.2.3
-python-dotenv==1.2.4
-sqlparse==0.6.0
-tzdata==2026.4
-django-cors-headers
-requests
+# Core Framework & REST API
+Django>=4.2.0,<6.0.0
+djangorestframework>=3.14.0
+django-cors-headers>=4.0.0
+
+# Database & Security
+PyMySQL>=1.1.0
+cryptography>=41.0.0
+mysqlclient>=2.2.0
+
+# Environment & Utilities
+python-dotenv>=1.0.0
+requests>=2.31.0
+asgiref>=3.7.0
+sqlparse>=0.4.4
+tzdata>=2024.1
+
+# Quality Assurance & Linting
+flake8>=7.0.0

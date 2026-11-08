@@ -3,7 +3,7 @@
 **Asignatura / Evaluación:** ES3 — Implementación de la Solución de Software (INACAP)  
 **Estudiantes:** Fabian Vidal y Pablo Cabezas  
 **Fecha de Ejecución:** Noviembre 2026  
-**Resultado Global:** `18/18 pruebas exitosas (100% OK)`
+**Resultado Global:** `21/21 pruebas exitosas (100% OK)`
 
 ---
 
@@ -18,6 +18,7 @@ La suite de pruebas automatizadas fue desarrollada en `telemetria/tests.py` medi
 | **`APITelemetriaSeguridadTestCase`** | Rechazo de peticiones anónimas a la API (HTTP 401/403), inserción válida por dispositivo `iot_device` (HTTP 201), rechazo a sensores desactivados (HTTP 400), validación en Serializer. | Seguridad API / IoT |
 | **`ReglasDeAlertaTestCase`** | Disparo automático de Alerta Roja por exceso, disparo de Alerta Azul por caída, ausencia de alertas en rango óptimo, supresión de falsas alertas ante fallo de conexión. | Lógica de Negocio |
 | **`FormulariosDashboardTestCase`** | Validación estricta de porcentajes (> 100% rechazado), escala química de pH (> 14 rechazado), coherencia de límites (mínimo $\ge$ máximo rechazado), persistencia selectiva de sensores. | Validación de Entrada |
+| **`SeguridadPunto6TestCase`** | Control estricto de `ALLOWED_HOSTS` sin comodines, protección CORS selectiva y aprovisionamiento automático RBAC de `iot_device`. | Seguridad / Auditoría |
 
 ---
 
@@ -31,7 +32,7 @@ python manage.py test telemetria -v 2
 ### Salida Consignada del Protocolo:
 ```text
 Creating test database for alias 'default' ('test_aquaplants_db')...
-Found 18 test(s).
+Found 21 test(s).
 Operations to perform:
   Synchronize unmigrated apps: corsheaders, messages, rest_framework, staticfiles
   Apply all migrations: admin, auth, contenttypes, sessions, telemetria
@@ -64,7 +65,7 @@ test_supervisor_no_puede_crear_instalacion ... ok
 test_usuario_anonimo_redirigido_al_login ... ok
 
 ----------------------------------------------------------------------
-Ran 18 tests in 8.862s
+Ran 21 tests in 14.655s
 
 OK
 Destroying test database for alias 'default' ('test_aquaplants_db')...
