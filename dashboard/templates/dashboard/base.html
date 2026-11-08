@@ -1,0 +1,271 @@
+{% load static %}<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AquaPlants{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        /* ==========================================================
+           AQUAPLANTS - SISTEMA DE DISEÑO
+           Paleta contenida: neutros fríos + un único acento verde.
+           ========================================================== */
+        :root {
+            --ap-bg: #0e1116;
+            --ap-surface: #141820;
+            --ap-surface-2: #191e28;
+            --ap-input: #0f1319;
+            --ap-border: #232a35;
+            --ap-border-strong: #2e3744;
+            --ap-text: #e6e9ee;
+            --ap-muted: #8b95a5;
+            --ap-accent: #34a37c;
+            --ap-accent-hover: #2c8d6a;
+            --ap-danger: #d4574f;
+            --ap-warning: #c99a3b;
+            --ap-info: #4f8fd0;
+            --ap-radius: 8px;
+        }
+        [data-bs-theme="dark"] {
+            --bs-body-bg: var(--ap-bg);
+            --bs-body-color: var(--ap-text);
+            --bs-border-color: var(--ap-border);
+            --bs-secondary-color: var(--ap-muted);
+            --bs-link-color: var(--ap-accent);
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: var(--ap-bg);
+            color: var(--ap-text);
+            font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4, h5, h6 { font-weight: 600; letter-spacing: -0.01em; }
+        a { text-decoration: none; }
+        .t-muted { color: var(--ap-muted) !important; }
+        .t-accent { color: var(--ap-accent) !important; }
+        .t-danger { color: var(--ap-danger) !important; }
+        .num { font-variant-numeric: tabular-nums; }
+        .wrap { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
+
+        /* ---------- Navegación ---------- */
+        .app-nav {
+            background: var(--ap-surface);
+            border-bottom: 1px solid var(--ap-border);
+            position: sticky; top: 0; z-index: 1030;
+        }
+        .app-nav-inner {
+            display: flex; align-items: center; justify-content: space-between;
+            height: 58px; gap: 1rem;
+        }
+        .app-brand img { height: 34px; display: block; }
+        .app-nav-right { display: flex; align-items: center; gap: 1rem; }
+        .app-user { font-size: 0.8rem; color: var(--ap-muted); }
+        .app-user strong { color: var(--ap-text); font-weight: 500; }
+        .app-main { padding-top: 1.75rem; padding-bottom: 3rem; }
+
+        /* ---------- Cabecera de página ---------- */
+        .page-head {
+            display: flex; flex-wrap: wrap; align-items: flex-end;
+            justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem;
+        }
+        .page-head h1 { font-size: 1.35rem; margin: 0 0 0.2rem; }
+        .page-head p { margin: 0; color: var(--ap-muted); font-size: 0.85rem; }
+        .page-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+        /* ---------- Botones ---------- */
+        .btn { font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 0.4rem 0.85rem; }
+        .btn-sm { font-size: 0.8rem; padding: 0.3rem 0.7rem; }
+        .btn i { margin-right: 0.35rem; font-size: 0.9em; vertical-align: -0.05em; }
+        .btn-primary-ap { background: var(--ap-accent); border: 1px solid var(--ap-accent); color: #fff; }
+        .btn-primary-ap:hover { background: var(--ap-accent-hover); border-color: var(--ap-accent-hover); color: #fff; }
+        .btn-ghost { background: transparent; border: 1px solid var(--ap-border-strong); color: var(--ap-text); }
+        .btn-ghost:hover { background: var(--ap-surface-2); border-color: #3a4556; color: var(--ap-text); }
+        .btn-ghost-danger { background: transparent; border: 1px solid rgba(212,87,79,.45); color: var(--ap-danger); }
+        .btn-ghost-danger:hover { background: rgba(212,87,79,.1); border-color: var(--ap-danger); color: var(--ap-danger); }
+        .btn-danger-ap { background: var(--ap-danger); border: 1px solid var(--ap-danger); color: #fff; }
+        .btn-danger-ap:hover { background: #bd4a43; border-color: #bd4a43; color: #fff; }
+        .btn-link-ap { color: var(--ap-muted); padding: 0.3rem 0.5rem; }
+        .btn-link-ap:hover { color: var(--ap-text); }
+
+        /* ---------- Paneles ---------- */
+        .panel { background: var(--ap-surface); border: 1px solid var(--ap-border); border-radius: var(--ap-radius); }
+        .panel-head {
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+            gap: 0.75rem; padding: 0.9rem 1.15rem; border-bottom: 1px solid var(--ap-border);
+        }
+        .panel-title { font-size: 0.9rem; font-weight: 600; margin: 0; }
+        .panel-sub { font-size: 0.78rem; color: var(--ap-muted); margin: 0.1rem 0 0; }
+        .panel-body { padding: 1.15rem; }
+        .panel-foot { padding: 0.7rem 1.15rem; border-top: 1px solid var(--ap-border); font-size: 0.78rem; color: var(--ap-muted); text-align: right; }
+
+        /* ---------- Indicadores ---------- */
+        .stat { padding: 1rem 1.15rem; height: 100%; }
+        .stat-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ap-muted); }
+        .stat-value { font-size: 1.7rem; font-weight: 600; line-height: 1.2; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+        .stat-note { font-size: 0.78rem; color: var(--ap-muted); }
+        .metric-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ap-muted); }
+        .metric-value { font-size: 2rem; font-weight: 600; line-height: 1.15; font-variant-numeric: tabular-nums; }
+        .metric-unit { font-size: 0.8rem; color: var(--ap-muted); }
+
+        /* ---------- Estados ---------- */
+        .status {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            font-size: 0.72rem; font-weight: 500; line-height: 1;
+            padding: 0.28rem 0.55rem; border-radius: 4px; border: 1px solid;
+        }
+        .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+        .status-ok  { color: #5cc19b; border-color: rgba(52,163,124,.35); background: rgba(52,163,124,.08); }
+        .status-off { color: var(--ap-muted); border-color: var(--ap-border-strong); background: transparent; }
+        .status-err { color: #e0807a; border-color: rgba(212,87,79,.4); background: rgba(212,87,79,.08); }
+        .status-warn{ color: #d9b35f; border-color: rgba(201,154,59,.4); background: rgba(201,154,59,.08); }
+        .tag {
+            display: inline-block; font-size: 0.72rem; font-weight: 500;
+            padding: 0.2rem 0.5rem; border-radius: 4px;
+            background: var(--ap-surface-2); border: 1px solid var(--ap-border-strong); color: var(--ap-text);
+        }
+        .limit-lo { color: #7fb0e2; }
+        .limit-hi { color: #e0807a; }
+        .sev { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.5rem; }
+        .sev-high { background: var(--ap-danger); }
+        .sev-low { background: var(--ap-info); }
+        .live-dot {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            background: var(--ap-accent); margin-right: 0.5rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+        /* ---------- Tablas ---------- */
+        .tbl { width: 100%; margin: 0; color: var(--ap-text); border-collapse: collapse; }
+        .tbl thead th {
+            font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+            color: var(--ap-muted); background: var(--ap-surface-2);
+            padding: 0.65rem 1.15rem; border-bottom: 1px solid var(--ap-border); white-space: nowrap;
+        }
+        .tbl tbody td { padding: 0.7rem 1.15rem; border-bottom: 1px solid var(--ap-border); vertical-align: middle; }
+        .tbl tbody tr:last-child td { border-bottom: 0; }
+        .tbl tbody tr:hover td { background: rgba(255,255,255,.015); }
+        .tbl .empty { text-align: center; color: var(--ap-muted); padding: 2.25rem 1rem; }
+        .row-nueva td { animation: rowIn .8s ease; }
+        @keyframes rowIn { from { background: rgba(52,163,124,.14); } to { background: transparent; } }
+
+        /* ---------- Formularios ---------- */
+        .form-label { font-size: 0.8rem; font-weight: 500; color: var(--ap-text); margin-bottom: 0.35rem; }
+        .form-control, .form-select {
+            background-color: var(--ap-input) !important;
+            border: 1px solid var(--ap-border-strong) !important;
+            color: var(--ap-text) !important;
+            border-radius: 6px; font-size: 0.88rem; padding: 0.5rem 0.75rem;
+        }
+        .form-control::placeholder { color: #566072; }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--ap-accent) !important;
+            box-shadow: 0 0 0 3px rgba(52,163,124,.18) !important;
+        }
+        .form-text { color: var(--ap-muted); font-size: 0.78rem; }
+        .form-check-input { background-color: var(--ap-input); border-color: #3a4556; }
+        .form-check-input:checked { background-color: var(--ap-accent); border-color: var(--ap-accent); }
+        .form-check-input:focus { border-color: var(--ap-accent); box-shadow: 0 0 0 3px rgba(52,163,124,.18); }
+        .field-error { color: #e0807a; font-size: 0.8rem; margin-top: 0.3rem; }
+        .check-tile {
+            display: flex; align-items: center; height: 100%;
+            padding: 0.6rem 0.75rem; border: 1px solid var(--ap-border);
+            border-radius: 6px; background: var(--ap-surface-2); transition: border-color .15s;
+        }
+        .check-tile:hover { border-color: var(--ap-accent); }
+
+        /* ---------- Avisos ---------- */
+        .ap-alert {
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+            padding: 0.75rem 1rem; margin-bottom: 1.25rem; border-radius: 6px;
+            border: 1px solid var(--ap-border); border-left-width: 3px;
+            background: var(--ap-surface); font-size: 0.86rem;
+        }
+        .ap-alert-success { border-left-color: var(--ap-accent); }
+        .ap-alert-error   { border-left-color: var(--ap-danger); }
+        .ap-alert-warning { border-left-color: var(--ap-warning); }
+        .ap-alert-info, .ap-alert-debug { border-left-color: var(--ap-info); }
+        .ap-alert .btn-close { font-size: 0.65rem; margin-top: 0.2rem; }
+        .notice { padding: 0.7rem 0.9rem; border-radius: 6px; font-size: 0.82rem; border: 1px solid var(--ap-border-strong); background: var(--ap-surface-2); color: var(--ap-muted); }
+        .notice-warn { border-color: rgba(201,154,59,.4); background: rgba(201,154,59,.07); color: #d9b35f; }
+
+        /* ---------- Menús desplegables ---------- */
+        .dropdown-menu {
+            --bs-dropdown-bg: var(--ap-surface);
+            --bs-dropdown-border-color: var(--ap-border-strong);
+            --bs-dropdown-link-color: var(--ap-text);
+            --bs-dropdown-link-hover-bg: var(--ap-surface-2);
+            --bs-dropdown-link-hover-color: var(--ap-text);
+            --bs-dropdown-header-color: var(--ap-muted);
+            font-size: 0.85rem; border-radius: 8px; padding: 0.35rem;
+        }
+        .dropdown-header { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+        .dropdown-item { border-radius: 5px; padding: 0.5rem 0.65rem; white-space: normal; }
+        .count-badge {
+            display: inline-block; min-width: 18px; padding: 0.1rem 0.4rem; margin-left: 0.4rem;
+            border-radius: 9px; background: var(--ap-danger); color: #fff; font-size: 0.68rem; font-weight: 600; text-align: center;
+        }
+
+        /* ---------- Tarjetas de instalación ---------- */
+        .site-card { display: flex; flex-direction: column; height: 100%; transition: border-color .15s; }
+        .site-card:hover { border-color: var(--ap-border-strong); }
+        .site-card .panel-body { flex: 1; display: flex; flex-direction: column; }
+        .site-meta { font-size: 0.82rem; color: var(--ap-muted); margin: 0.9rem 0 1.1rem; }
+        .site-meta dt { font-weight: 500; color: var(--ap-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .site-meta dd { margin: 0 0 0.6rem; color: var(--ap-text); }
+
+        /* ---------- Autenticación ---------- */
+        .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+        .auth-card { width: 100%; max-width: 380px; padding: 2.25rem 2rem; }
+        .auth-card .brand { text-align: center; margin-bottom: 1.75rem; }
+        .auth-card .brand img { height: 44px; margin-bottom: 0.9rem; }
+        .auth-card .brand p { margin: 0; color: var(--ap-muted); font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+        @media (max-width: 576px) {
+            .wrap { padding: 0 1rem; }
+            .app-user { display: none; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+{% block navbar %}
+    <header class="app-nav">
+        <div class="wrap app-nav-inner">
+            <a class="app-brand" href="{% url 'inicio_dashboard' %}">
+                <img src="{% static 'Icono.png' %}" alt="AquaPlants">
+            </a>
+            <div class="app-nav-right">
+                {% block nav_actions %}{% endblock %}
+                <span class="app-user">Sesión: <strong>{{ request.user.username }}</strong></span>
+                <a href="/logout/" class="btn btn-ghost btn-sm"><i class="bi bi-box-arrow-right"></i>Cerrar sesión</a>
+            </div>
+        </div>
+    </header>
+{% endblock %}
+
+{% block main %}
+    <main class="wrap app-main">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="ap-alert ap-alert-{{ message.tags|default:'success' }}" role="alert">
+                <span>{{ message }}</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+{% endblock %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -11,7 +11,7 @@ SENSOR_CATALOGO = {
     'temperatura_agua': {
         'nombre': 'Temperatura del Agua / Solución',
         'unidad': '°C',
-        'icono': '🌡️💧',
+        'icono': '',
         'min_val': 0.0,
         'max_val': 50.0,
         'step': '0.1',
@@ -21,7 +21,7 @@ SENSOR_CATALOGO = {
     'temperatura_aire': {
         'nombre': 'Temperatura del Aire / Ambiente',
         'unidad': '°C',
-        'icono': '🌡️💨',
+        'icono': '',
         'min_val': 0.0,
         'max_val': 60.0,
         'step': '0.1',
@@ -31,7 +31,7 @@ SENSOR_CATALOGO = {
     'humedad': {
         'nombre': 'Humedad Ambiental',
         'unidad': '%',
-        'icono': '💧',
+        'icono': '',
         'min_val': 0.0,
         'max_val': 100.0,
         'step': '0.1',
@@ -41,7 +41,7 @@ SENSOR_CATALOGO = {
     'ph': {
         'nombre': 'Nivel de pH',
         'unidad': 'pH',
-        'icono': '🧪',
+        'icono': '',
         'min_val': 0.0,
         'max_val': 14.0,
         'step': '0.01',
@@ -51,7 +51,7 @@ SENSOR_CATALOGO = {
     'caudal': {
         'nombre': 'Caudal de Agua',
         'unidad': 'L/min',
-        'icono': '🌊',
+        'icono': '',
         'min_val': 0.0,
         'max_val': 50.0,
         'step': '0.1',
@@ -61,7 +61,7 @@ SENSOR_CATALOGO = {
     'nivel_estanque': {
         'nombre': 'Nivel del Estanque',
         'unidad': '%',
-        'icono': '🪣',
+        'icono': '',
         'min_val': 0.0,
         'max_val': 100.0,
         'step': '0.5',
@@ -71,7 +71,7 @@ SENSOR_CATALOGO = {
     'co2': {
         'nombre': 'Dióxido de Carbono (CO₂)',
         'unidad': 'ppm',
-        'icono': '🫧',
+        'icono': '',
         'min_val': 0.0,
         'max_val': 5000.0,
         'step': '1.0',
@@ -81,7 +81,7 @@ SENSOR_CATALOGO = {
     'fotoperiodo': {
         'nombre': 'Fotoperiodo (Luz)',
         'unidad': 'h/día',
-        'icono': '☀️',
+        'icono': '',
         'min_val': 0.0,
         'max_val': 24.0,
         'step': '0.5',
@@ -91,7 +91,7 @@ SENSOR_CATALOGO = {
     'temperatura': {
         'nombre': 'Temperatura General (Legado)',
         'unidad': '°C',
-        'icono': '🌡️',
+        'icono': '',
         'min_val': 0.0,
         'max_val': 60.0,
         'step': '0.1',
@@ -141,7 +141,7 @@ class Sensor(models.Model):
         return SENSOR_CATALOGO.get(self.tipo, {
             'nombre': self.get_tipo_display(),
             'unidad': '',
-            'icono': '📡',
+            'icono': '',
             'min_val': 0.0,
             'max_val': 1000.0,
             'step': '0.1',

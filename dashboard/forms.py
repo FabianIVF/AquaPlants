@@ -3,14 +3,14 @@ from telemetria.models import Instalacion, ReglaAlerta, Sensor, SENSOR_CATALOGO
 
 # Opciones de sensores configurables para los huertos
 OPCIONES_SENSORES_CHOICES = [
-    ('temperatura_agua', '🌡️💧 Temperatura del Agua/Solución (°C)'),
-    ('temperatura_aire', '🌡️💨 Temperatura del Aire/Ambiente (°C)'),
-    ('humedad', '💧 Humedad Ambiental (%)'),
-    ('ph', '🧪 Nivel de pH (pH)'),
-    ('caudal', '🌊 Caudal de Agua (L/min)'),
-    ('nivel_estanque', '🪣 Nivel del Estanque (%)'),
-    ('co2', '🫧 Dióxido de Carbono (ppm)'),
-    ('fotoperiodo', '☀️ Fotoperiodo (horas de luz/día)'),
+    ('temperatura_agua', 'Temperatura del Agua/Solución (°C)'),
+    ('temperatura_aire', 'Temperatura del Aire/Ambiente (°C)'),
+    ('humedad', 'Humedad Ambiental (%)'),
+    ('ph', 'Nivel de pH (pH)'),
+    ('caudal', 'Caudal de Agua (L/min)'),
+    ('nivel_estanque', 'Nivel del Estanque (%)'),
+    ('co2', 'Dióxido de Carbono (ppm)'),
+    ('fotoperiodo', 'Fotoperiodo (horas de luz/día)'),
 ]
 
 SENSORES_RECOMENDADOS_DEFAULT = [
@@ -152,7 +152,7 @@ class ReglaAlertaForm(forms.ModelForm):
             self.fields['sensor'].queryset = base_qs.exclude(id__in=sensores_con_regla)
             self.fields['sensor'].empty_label = "--- Selecciona un sensor activo de este huerto ---"
             self.fields['sensor'].label_from_instance = (
-                lambda s: f"{s.get_icono()} {s.get_tipo_display()} — ({s.modelo_hardware})"
+                lambda s: f"{s.get_tipo_display()} — ({s.modelo_hardware})"
             )
 
     def clean(self):
