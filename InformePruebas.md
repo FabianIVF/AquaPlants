@@ -1,7 +1,7 @@
 # Informe de Ejecución y Validación del Protocolo de Pruebas (Fase 4)
 **Proyecto:** AquaPlants — Plataforma IoT de Telemetría Hidropónica  
 **Asignatura / Evaluación:** ES3 — Implementación de la Solución de Software (INACAP)  
-**Estudiante:** Fabian Vidal  
+**Estudiantes:** Fabian Vidal y Pablo Cabezas  
 **Fecha de Ejecución:** Noviembre 2026  
 **Resultado Global:** `18/18 pruebas exitosas (100% OK)`
 

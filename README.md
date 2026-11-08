@@ -2,10 +2,14 @@
 
 Sistema web integral desarrollado en **Django 5.x** y **Django REST Framework (DRF)** para el monitoreo en tiempo real, control de parámetros críticos y automatización de alertas en cultivos hidropónicos y acuapónicos.
 
-* **Proyecto Académico:** ES3 — Implementación de la Solución de Software (INACAP).
-* **Desarrollador / Autor:** Fabian Vidal.
-* **Despliegue en la Nube:** [https://fabianvidal.pythonanywhere.com/](https://fabianvidal.pythonanywhere.com/)
-* **Repositorio Oficial:** [https://github.com/FabianIVF/AquaPlants](https://github.com/FabianIVF/AquaPlants)
+* **Proyecto Académico:**  
+Evaluación 3 - Unidad 3 — Proyecto Integrado.
+* **Desarrollador / Autor:** 
+Fabian Vidal y Pablo Cabezas.
+* **Despliegue en la Nube:** 
+https://fabianvidal.pythonanywhere.com/
+* **Repositorio Oficial:** 
+https://github.com/FabianIVF/AquaPlants
 
 ---
 
@@ -207,7 +211,7 @@ python manage.py test telemetria -v 2
 * **Fallos (Failures):** 0
 * **Errores (Errors):** 0
 * **Tasa de Éxito:** **100% OK**
-* **Detalle exhaustivo:** Consulta el archivo [INFORME_PRUEBAS_FASE4.md](file:///F:/WorkspaceAquaPlants/INFORME_PRUEBAS_FASE4.md).
+* **Detalle exhaustivo:** Consulta el archivo [InformePruebas.md](file:///F:/WorkspaceAquaPlants/InformePruebas.md).
 
 ---
 
