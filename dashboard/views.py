@@ -47,7 +47,7 @@ def inicio_dashboard(request):
 def detalle_instalacion(request, instalacion_id):
     instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
     asegurar_sensores_estandar(instalacion)
-    sensores = Sensor.objects.filter(instalacion=instalacion)
+    sensores = Sensor.objects.filter(instalacion=instalacion, activo=True)
     mediciones = Medicion.objects.filter(sensor__in=sensores).order_by('-timestamp')[:20]
     reglas = ReglaAlerta.objects.filter(sensor__in=sensores).select_related('sensor')
     
@@ -73,7 +73,7 @@ def crear_instalacion(request):
         if form.is_valid():
             nueva = form.save()
             asegurar_sensores_estandar(nueva)
-            messages.success(request, f'Instalación "{nueva.nombre}" creada exitosamente con su kit estándar de 4 sensores.')
+            messages.success(request, f'Instalación "{nueva.nombre}" creada exitosamente y variables configuradas.')
             return redirect('inicio_dashboard')
     else:
         form = InstalacionForm()
@@ -103,7 +103,7 @@ def editar_instalacion(request, instalacion_id):
     contexto = {
         'form': form,
         'titulo': f'Editar Instalación: {instalacion.nombre}',
-        'descripcion': 'Actualiza los datos del sistema o cambia su estado operativo.',
+        'descripcion': 'Actualiza los datos del sistema y selecciona qué sensores deseas vigilar o desactivar.',
         'volver_url': reverse('inicio_dashboard'),
     }
     return render(request, 'dashboard/formulario.html', contexto)
@@ -206,7 +206,7 @@ def api_telemetria_live(request, instalacion_id):
     """
     instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
     asegurar_sensores_estandar(instalacion)
-    sensores = Sensor.objects.filter(instalacion=instalacion)
+    sensores = Sensor.objects.filter(instalacion=instalacion, activo=True)
 
     datos_sensores = {}
     for sensor in sensores:
@@ -265,7 +265,7 @@ def historial_instalacion(request, instalacion_id):
     """
     instalacion = get_object_or_404(Instalacion, pk=instalacion_id)
     asegurar_sensores_estandar(instalacion)
-    sensores = Sensor.objects.filter(instalacion=instalacion)
+    sensores = Sensor.objects.filter(instalacion=instalacion, activo=True)
 
     # Estado actual: última medición de cada sensor
     estados_actuales = []

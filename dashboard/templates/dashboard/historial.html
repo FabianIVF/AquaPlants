@@ -95,25 +95,14 @@
                     <div class="col-6 col-md-3">
                         <div class="estado-card p-3 text-center h-100">
                             <div class="fw-bold text-uppercase small text-secondary mb-1">
-                                {% if sensor.tipo == "temperatura" %}🌡️{% elif sensor.tipo == "humedad" %}💧{% elif sensor.tipo == "ph" %}🧪{% else %}🌊{% endif %}
-                                {{ sensor.tipo }}
+                                {{ sensor.get_icono }} {{ sensor.get_tipo_display }}
                             </div>
                             {% if med %}
-                                <div class="valor-actual
-                                    {% if sensor.tipo == 'temperatura' %}text-warning
-                                    {% elif sensor.tipo == 'humedad' %}text-info
-                                    {% elif sensor.tipo == 'ph' %}text-purple
-                                    {% else %}text-cyan{% endif %}
-                                " style="
-                                    {% if sensor.tipo == 'temperatura' %}color:#ff7043!important
-                                    {% elif sensor.tipo == 'humedad' %}color:#29b6f6!important
-                                    {% elif sensor.tipo == 'ph' %}color:#ab47bc!important
-                                    {% else %}color:#26c6da!important{% endif %}
-                                ">
+                                <div class="valor-actual text-success">
                                     {{ med.valor }}
                                 </div>
                                 <small class="text-muted d-block">
-                                    {% if sensor.tipo == "temperatura" %}°C{% elif sensor.tipo == "humedad" %}%{% elif sensor.tipo == "ph" %}pH{% else %}L/min{% endif %}
+                                    {{ sensor.get_unidad }}
                                 </small>
                                 <div class="mt-2">
                                     {% if med.estado_conexion %}
@@ -178,15 +167,13 @@
                             <tr>
                                 <td class="text-secondary">{{ m.timestamp|date:"d/m/Y H:i:s" }}</td>
                                 <td>
-                                    <span class="badge badge-tipo"
-                                        style="background:{% if m.sensor.tipo == 'temperatura' %}#ff7043{% elif m.sensor.tipo == 'humedad' %}#29b6f6{% elif m.sensor.tipo == 'ph' %}#ab47bc{% else %}#26c6da{% endif %};">
-                                        {% if m.sensor.tipo == "temperatura" %}🌡️{% elif m.sensor.tipo == "humedad" %}💧{% elif m.sensor.tipo == "ph" %}🧪{% else %}🌊{% endif %}
-                                        {{ m.sensor.tipo }}
+                                    <span class="badge badge-tipo bg-secondary">
+                                        {{ m.sensor.get_icono }} {{ m.sensor.get_tipo_display }}
                                     </span>
                                 </td>
                                 <td><strong class="text-white">{{ m.valor }}</strong></td>
                                 <td class="text-secondary">
-                                    {% if m.sensor.tipo == "temperatura" %}°C{% elif m.sensor.tipo == "humedad" %}%{% elif m.sensor.tipo == "ph" %}pH{% else %}L/min{% endif %}
+                                    {{ m.sensor.get_unidad }}
                                 </td>
                                 <td>
                                     {% if m.estado_conexion %}
