@@ -1,5 +1,5 @@
-from django.shortcuts import render
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 from .models import Instalacion, Sensor, Medicion, ReglaAlerta, AlertaGenerada
 from .serializers import InstalacionSerializer, SensorSerializer, MedicionSerializer
@@ -11,26 +11,63 @@ class InstalacionViewSet(viewsets.ModelViewSet):
     # Políticas de seguridad aplicadas a la ruta
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
 
+
 class SensorViewSet(viewsets.ModelViewSet):
-    queryset = Sensor.objects.all()
     serializer_class = SensorSerializer
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
+    queryset = Sensor.objects.select_related('instalacion').all()
+
+    def get_queryset(self):
+        """
+        Filtros opcionales por query string (usados por el simulador IoT):
+          ?instalacion=<uuid>   -> sensores de una instalación
+          ?activo=true|false    -> solo sensores monitoreados / desactivados
+        """
+        qs = super().get_queryset()
+        instalacion = self.request.query_params.get('instalacion')
+        activo = self.request.query_params.get('activo')
+        if instalacion:
+            qs = qs.filter(instalacion_id=instalacion)
+        if activo is not None:
+            qs = qs.filter(activo=activo.lower() in ('true', '1', 'si'))
+        return qs
+
 
 class MedicionViewSet(viewsets.ModelViewSet):
     # Por defecto ordenamos las mediciones desde la más reciente
-    queryset = Medicion.objects.all().order_by('-timestamp')
+    queryset = Medicion.objects.select_related('sensor__instalacion').order_by('-timestamp')
     serializer_class = MedicionSerializer
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
 
+    def create(self, request, *args, **kwargs):
+        """
+        Igual que el create estándar, pero la respuesta incluye el campo
+        'alerta' con las alertas generadas por esta medición (o null).
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        alertas = self.perform_create(serializer)
+        data = dict(serializer.data)
+        data['alerta'] = alertas[0] if len(alertas) == 1 else (alertas or None)
+        return Response(data, status=status.HTTP_201_CREATED)
+
     def perform_create(self, serializer):
         medicion_guardada = serializer.save()
+        sensor = medicion_guardada.sensor
 
-        reglas = ReglaAlerta.objects.filter(sensor=medicion_guardada.sensor, activa=True)
+        # Si el dispositivo reporta fallo de conexión, el valor no es confiable:
+        # se guarda para trazabilidad pero NO se evalúan reglas (evita falsas alertas)
+        if not medicion_guardada.estado_conexion:
+            return []
 
-        unidad = medicion_guardada.sensor.get_unidad()
-        nombre_sensor = medicion_guardada.sensor.get_tipo_display()
-        unidad_str = f" {unidad_str}" if unidad and not unidad.startswith('°') and not unidad.startswith('%') else unidad
+        reglas = ReglaAlerta.objects.filter(sensor=sensor, activa=True)
 
+        unidad = sensor.get_unidad()
+        # Las unidades con símbolo pegado (°C, %) no llevan espacio
+        unidad_str = unidad if unidad.startswith(('°', '%')) else f" {unidad}"
+        nombre_sensor = sensor.info_catalogo.get('nombre', sensor.get_tipo_display())
+
+        alertas = []
         for regla in reglas:
             mensaje_alerta = None
 
@@ -44,6 +81,7 @@ class MedicionViewSet(viewsets.ModelViewSet):
                 AlertaGenerada.objects.create(
                     regla=regla,
                     medicion=medicion_guardada,
-                    mensaje=mensaje_alerta
+                    mensaje=mensaje_alerta[:200]
                 )
-
+                alertas.append(mensaje_alerta)
+        return alertas

@@ -76,6 +76,13 @@ class InstalacionForm(forms.ModelForm):
         seleccionados = set(self.cleaned_data.get('sensores_seleccionados', []))
         sensores_actuales = {s.tipo: s for s in instalacion.sensores.all()}
 
+        # El sensor legado 'temperatura' se reemplaza por temperatura_aire/agua:
+        # se desactiva (conservando su historial) para no duplicar lecturas.
+        legado = sensores_actuales.get('temperatura')
+        if legado and legado.activo:
+            legado.activo = False
+            legado.save(update_fields=['activo'])
+
         for tipo, meta in SENSOR_CATALOGO.items():
             if tipo == 'temperatura':
                 continue
