@@ -72,3 +72,36 @@ class AlertaGenerada(models.Model):
 
     def __str__(self):
         return f"[{self.fecha_generacion.strftime('%H:%M:%S')}] {self.mensaje}"
+
+# ============================================================
+# SEÑAL Y AUTO-APROVISIONAMIENTO DEL KIT BASE DE SENSORES
+# ============================================================
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+def asegurar_sensores_estandar(instalacion):
+    """
+    Garantiza que la instalación cuente con el kit base de 4 sensores:
+    Temperatura, Humedad, pH y Caudal. Si falta alguno, lo crea automáticamente.
+    """
+    kit = [
+        ('temperatura', 'DHT22 / DS18B20'),
+        ('humedad', 'Capacitivo / DHT22'),
+        ('ph', 'Sensor pH Analógico V1.1'),
+        ('caudal', 'Flujómetro YF-S201'),
+    ]
+    sensores_existentes = set(instalacion.sensores.values_list('tipo', flat=True))
+    for tipo, modelo in kit:
+        if tipo not in sensores_existentes:
+            Sensor.objects.create(
+                instalacion=instalacion,
+                tipo=tipo,
+                modelo_hardware=modelo
+            )
+
+
+@receiver(post_save, sender=Instalacion)
+def auto_crear_sensores_instalacion(sender, instance, created, **kwargs):
+    if created:
+        asegurar_sensores_estandar(instance)

@@ -58,3 +58,4 @@ class ReglaAlertaForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if instalacion:
             self.fields['sensor'].queryset = Sensor.objects.filter(instalacion=instalacion)
+            self.fields['sensor'].label_from_instance = lambda obj: f"{obj.get_tipo_display()} ({obj.modelo_hardware})"

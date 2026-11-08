@@ -27,14 +27,24 @@ class MedicionViewSet(viewsets.ModelViewSet):
 
         reglas = ReglaAlerta.objects.filter(sensor=medicion_guardada.sensor, activa=True)
 
+        unidades = {
+            'temperatura': '°C',
+            'humedad': '%',
+            'ph': ' pH',
+            'caudal': ' L/min',
+        }
+        tipo_sensor = medicion_guardada.sensor.tipo
+        unidad = unidades.get(tipo_sensor, '')
+        nombre_sensor = medicion_guardada.sensor.get_tipo_display()
+
         for regla in reglas:
             mensaje_alerta = None
 
             if regla.limite_maximo is not None and medicion_guardada.valor > regla.limite_maximo:
-                mensaje_alerta = f"¡ALERTA ROJA! Temperatura ALTA: {medicion_guardada.valor}°C (Límite: {regla.limite_maximo}°C)"
+                mensaje_alerta = f"¡ALERTA ROJA! {nombre_sensor} ALTO: {medicion_guardada.valor}{unidad} (Límite: {regla.limite_maximo}{unidad})"
 
             elif regla.limite_minimo is not None and medicion_guardada.valor < regla.limite_minimo:
-                mensaje_alerta = f"¡ALERTA AZUL! Temperatura BAJA: {medicion_guardada.valor}°C (Límite: {regla.limite_minimo}°C)"
+                mensaje_alerta = f"¡ALERTA AZUL! {nombre_sensor} BAJO: {medicion_guardada.valor}{unidad} (Límite: {regla.limite_minimo}{unidad})"
 
             if mensaje_alerta:
                 AlertaGenerada.objects.create(
