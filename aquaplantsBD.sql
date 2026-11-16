@@ -1,8 +1,7 @@
 -- --------------------------------------------------------
--- Host:                         127.0.0.1
--- Versión del servidor:         12.3.3-MariaDB - MariaDB Server
--- SO del servidor:              Win64
--- HeidiSQL Versión:             12.20.0.7320
+-- Respaldo Estructural y de Datos - AquaPlants (MySQL / MariaDB)
+-- Generado sin tablas ni credenciales de usuarios (auth_user / sesiones excluidas)
+-- Incluye columna `activo` en telemetria_sensor y mediciones de ejemplo
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -14,34 +13,31 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-
 -- Volcando estructura de base de datos para aquaplants_db
 CREATE DATABASE IF NOT EXISTS `aquaplants_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;
 USE `aquaplants_db`;
 
--- Volcando estructura para tabla aquaplants_db.auth_group
-CREATE TABLE IF NOT EXISTS `auth_group` (
+-- Volcando estructura para tabla aquaplants_db.django_content_type
+CREATE TABLE IF NOT EXISTS `django_content_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(150) NOT NULL,
+  `app_label` varchar(100) NOT NULL,
+  `model` varchar(100) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  UNIQUE KEY `django_content_type_app_label_model_76bd3d3b_uniq` (`app_label`,`model`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Volcando datos para la tabla aquaplants_db.auth_group: ~0 rows (aproximadamente)
-
--- Volcando estructura para tabla aquaplants_db.auth_group_permissions
-CREATE TABLE IF NOT EXISTS `auth_group_permissions` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `group_id` int(11) NOT NULL,
-  `permission_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `auth_group_permissions_group_id_permission_id_0cd325b0_uniq` (`group_id`,`permission_id`),
-  KEY `auth_group_permissio_permission_id_84c5c92e_fk_auth_perm` (`permission_id`),
-  CONSTRAINT `auth_group_permissio_permission_id_84c5c92e_fk_auth_perm` FOREIGN KEY (`permission_id`) REFERENCES `auth_permission` (`id`),
-  CONSTRAINT `auth_group_permissions_group_id_b120cbf9_fk_auth_group_id` FOREIGN KEY (`group_id`) REFERENCES `auth_group` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Volcando datos para la tabla aquaplants_db.auth_group_permissions: ~0 rows (aproximadamente)
+INSERT INTO `django_content_type` (`id`, `app_label`, `model`) VALUES
+	(1, 'admin', 'logentry'),
+	(2, 'auth', 'permission'),
+	(3, 'auth', 'group'),
+	(4, 'auth', 'user'),
+	(5, 'contenttypes', 'contenttype'),
+	(6, 'sessions', 'session'),
+	(7, 'telemetria', 'instalacion'),
+	(8, 'telemetria', 'sensor'),
+	(9, 'telemetria', 'medicion'),
+	(10, 'telemetria', 'reglaalerta'),
+	(11, 'telemetria', 'alertagenerada');
 
 -- Volcando estructura para tabla aquaplants_db.auth_permission
 CREATE TABLE IF NOT EXISTS `auth_permission` (
@@ -54,7 +50,6 @@ CREATE TABLE IF NOT EXISTS `auth_permission` (
   CONSTRAINT `auth_permission_content_type_id_2f476e4b_fk_django_co` FOREIGN KEY (`content_type_id`) REFERENCES `django_content_type` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Volcando datos para la tabla aquaplants_db.auth_permission: ~44 rows (aproximadamente)
 INSERT INTO `auth_permission` (`id`, `name`, `content_type_id`, `codename`) VALUES
 	(1, 'Can add log entry', 1, 'add_logentry'),
 	(2, 'Can change log entry', 1, 'change_logentry'),
@@ -101,118 +96,46 @@ INSERT INTO `auth_permission` (`id`, `name`, `content_type_id`, `codename`) VALU
 	(43, 'Can delete alerta generada', 11, 'delete_alertagenerada'),
 	(44, 'Can view alerta generada', 11, 'view_alertagenerada');
 
--- Volcando estructura para tabla aquaplants_db.auth_user
-CREATE TABLE IF NOT EXISTS `auth_user` (
+-- Volcando estructura para tabla aquaplants_db.auth_group
+CREATE TABLE IF NOT EXISTS `auth_group` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `password` varchar(128) NOT NULL,
-  `last_login` datetime(6) DEFAULT NULL,
-  `is_superuser` tinyint(1) NOT NULL,
-  `username` varchar(150) NOT NULL,
-  `first_name` varchar(150) NOT NULL,
-  `last_name` varchar(150) NOT NULL,
-  `email` varchar(254) NOT NULL,
-  `is_staff` tinyint(1) NOT NULL,
-  `is_active` tinyint(1) NOT NULL,
-  `date_joined` datetime(6) NOT NULL,
+  `name` varchar(150) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Volcando datos para la tabla aquaplants_db.auth_user: ~1 rows (aproximadamente)
-INSERT INTO `auth_user` (`id`, `password`, `last_login`, `is_superuser`, `username`, `first_name`, `last_name`, `email`, `is_staff`, `is_active`, `date_joined`) VALUES
-	(1, 'pbkdf2_sha256$1000000$gdfP5mwNwwHJUliMlvRKZW$AF4CFglZnAbswdMYOcFA9I3u3hW66Ayl1fcDKxSwE1I=', '2026-11-07 20:04:35.422588', 1, 'fbi', '', '', 'fbi@gmail.com', 1, 1, '2026-11-07 20:04:01.724578');
+INSERT INTO `auth_group` (`id`, `name`) VALUES
+	(1, 'Administrador'),
+	(2, 'Encargado de cultivo'),
+	(3, 'Supervisor'),
+	(4, 'Dispositivo IoT');
 
--- Volcando estructura para tabla aquaplants_db.auth_user_groups
-CREATE TABLE IF NOT EXISTS `auth_user_groups` (
+-- Volcando estructura para tabla aquaplants_db.auth_group_permissions
+CREATE TABLE IF NOT EXISTS `auth_group_permissions` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
   `group_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `auth_user_groups_user_id_group_id_94350c0c_uniq` (`user_id`,`group_id`),
-  KEY `auth_user_groups_group_id_97559544_fk_auth_group_id` (`group_id`),
-  CONSTRAINT `auth_user_groups_group_id_97559544_fk_auth_group_id` FOREIGN KEY (`group_id`) REFERENCES `auth_group` (`id`),
-  CONSTRAINT `auth_user_groups_user_id_6a12ed8b_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Volcando datos para la tabla aquaplants_db.auth_user_groups: ~0 rows (aproximadamente)
-
--- Volcando estructura para tabla aquaplants_db.auth_user_user_permissions
-CREATE TABLE IF NOT EXISTS `auth_user_user_permissions` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
   `permission_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `auth_user_user_permissions_user_id_permission_id_14a6b632_uniq` (`user_id`,`permission_id`),
-  KEY `auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm` (`permission_id`),
-  CONSTRAINT `auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm` FOREIGN KEY (`permission_id`) REFERENCES `auth_permission` (`id`),
-  CONSTRAINT `auth_user_user_permissions_user_id_a95ead1b_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  UNIQUE KEY `auth_group_permissions_group_id_permission_id_0cd325b0_uniq` (`group_id`,`permission_id`),
+  KEY `auth_group_permissio_permission_id_84c5c92e_fk_auth_perm` (`permission_id`),
+  CONSTRAINT `auth_group_permissio_permission_id_84c5c92e_fk_auth_perm` FOREIGN KEY (`permission_id`) REFERENCES `auth_permission` (`id`),
+  CONSTRAINT `auth_group_permissions_group_id_b120cbf9_fk_auth_group_id` FOREIGN KEY (`group_id`) REFERENCES `auth_group` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Volcando datos para la tabla aquaplants_db.auth_user_user_permissions: ~0 rows (aproximadamente)
-
--- Volcando estructura para tabla aquaplants_db.django_admin_log
-CREATE TABLE IF NOT EXISTS `django_admin_log` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `action_time` datetime(6) NOT NULL,
-  `object_id` longtext DEFAULT NULL,
-  `object_repr` varchar(200) NOT NULL,
-  `action_flag` smallint(5) unsigned NOT NULL CHECK (`action_flag` >= 0),
-  `change_message` longtext NOT NULL,
-  `content_type_id` int(11) DEFAULT NULL,
-  `user_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `django_admin_log_content_type_id_c4bce8eb_fk_django_co` (`content_type_id`),
-  KEY `django_admin_log_user_id_c564eba6_fk_auth_user_id` (`user_id`),
-  CONSTRAINT `django_admin_log_content_type_id_c4bce8eb_fk_django_co` FOREIGN KEY (`content_type_id`) REFERENCES `django_content_type` (`id`),
-  CONSTRAINT `django_admin_log_user_id_c564eba6_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Volcando datos para la tabla aquaplants_db.django_admin_log: ~0 rows (aproximadamente)
-INSERT INTO `django_admin_log` (`id`, `action_time`, `object_id`, `object_repr`, `action_flag`, `change_message`, `content_type_id`, `user_id`) VALUES
-	(1, '2026-11-07 20:04:58.776017', '0db4cda7-1631-489a-b022-e3dadd297fd9', 'Instalacion1', 1, '[{"added": {}}]', 7, 1),
-	(2, '2026-11-07 20:05:30.331718', 'f6192b23-fdc6-4c69-9c3b-3879cc05cc61', 'Instalacion2', 1, '[{"added": {}}]', 7, 1),
-	(3, '2026-11-07 20:05:39.949524', 'd98cbba2-076c-4e6f-9f96-9588a174f201', 'Instalacion3', 1, '[{"added": {}}]', 7, 1),
-	(4, '2026-11-07 20:05:57.579245', 'cdc445d8-c0d2-40ae-908b-c4d24cfde71f', 'temperatura - Instalacion1', 1, '[{"added": {}}]', 8, 1),
-	(5, '2026-11-07 20:07:50.681452', '4829d758-4ffe-421f-a539-a2565518f902', 'humedad - Instalacion1', 1, '[{"added": {}}]', 8, 1),
-	(6, '2026-11-07 20:08:19.107215', '3e415d44-4f2b-49cc-9b53-13711098abde', 'ph - Instalacion1', 1, '[{"added": {}}]', 8, 1),
-	(7, '2026-11-07 20:08:31.712573', 'd82659d6-b842-49e2-aebe-b3f59fc9e68f', 'caudal - Instalacion1', 1, '[{"added": {}}]', 8, 1),
-	(8, '2026-11-07 20:11:00.768600', '1', 'Regla de alerta para el sensor: ph - Instalacion1', 1, '[{"added": {}}]', 10, 1),
-	(9, '2026-11-07 20:11:51.667014', '2', 'Regla de alerta para el sensor: humedad - Instalacion1', 1, '[{"added": {}}]', 10, 1),
-	(10, '2026-11-07 20:12:20.024497', '3', 'Regla de alerta para el sensor: temperatura - Instalacion1', 1, '[{"added": {}}]', 10, 1),
-	(11, '2026-11-07 20:12:42.263637', '4', 'Regla de alerta para el sensor: caudal - Instalacion1', 1, '[{"added": {}}]', 10, 1),
-	(12, '2026-11-07 20:13:58.738778', '590d5414-2e4a-4525-a863-ae80715368a0', 'temperatura - Instalacion1', 1, '[{"added": {}}]', 8, 1),
-	(13, '2026-11-07 20:14:05.612894', '66128b04-7c15-407e-94da-52eb744aaddb', 'humedad - Instalacion1', 1, '[{"added": {}}]', 8, 1),
-	(14, '2026-11-07 20:14:09.209794', 'f4e111ad-6f9b-46a8-8bc5-d86913f691d5', 'ph - Instalacion1', 1, '[{"added": {}}]', 8, 1),
-	(15, '2026-11-07 20:14:14.241519', '9c46b79c-10ac-4640-bf06-4745f5d1cc85', 'caudal - Instalacion1', 1, '[{"added": {}}]', 8, 1),
-	(16, '2026-11-07 20:17:25.556091', 'd82659d6-b842-49e2-aebe-b3f59fc9e68f', 'caudal - Instalacion1', 3, '', 8, 1),
-	(17, '2026-11-07 20:17:29.554199', '4829d758-4ffe-421f-a539-a2565518f902', 'humedad - Instalacion1', 3, '', 8, 1),
-	(18, '2026-11-07 20:17:32.814455', 'cdc445d8-c0d2-40ae-908b-c4d24cfde71f', 'temperatura - Instalacion1', 3, '', 8, 1),
-	(19, '2026-11-07 20:17:39.461410', '3e415d44-4f2b-49cc-9b53-13711098abde', 'ph - Instalacion1', 3, '', 8, 1),
-	(20, '2026-11-07 20:19:22.819519', 'd98cbba2-076c-4e6f-9f96-9588a174f201', 'Instalacion3', 3, '', 7, 1),
-	(21, '2026-11-07 20:19:26.765913', 'f6192b23-fdc6-4c69-9c3b-3879cc05cc61', 'Instalacion2', 3, '', 7, 1);
-
--- Volcando estructura para tabla aquaplants_db.django_content_type
-CREATE TABLE IF NOT EXISTS `django_content_type` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `app_label` varchar(100) NOT NULL,
-  `model` varchar(100) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `django_content_type_app_label_model_76bd3d3b_uniq` (`app_label`,`model`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Volcando datos para la tabla aquaplants_db.django_content_type: ~11 rows (aproximadamente)
-INSERT INTO `django_content_type` (`id`, `app_label`, `model`) VALUES
-	(1, 'admin', 'logentry'),
-	(2, 'auth', 'permission'),
-	(3, 'auth', 'group'),
-	(4, 'auth', 'user'),
-	(5, 'contenttypes', 'contenttype'),
-	(6, 'sessions', 'session'),
-	(7, 'telemetria', 'instalacion'),
-	(8, 'telemetria', 'sensor'),
-	(9, 'telemetria', 'medicion'),
-	(10, 'telemetria', 'reglaalerta'),
-	(11, 'telemetria', 'alertagenerada');
+INSERT INTO `auth_group_permissions` (`id`, `group_id`, `permission_id`) VALUES
+	-- Administrador (CRUD total del dominio)
+	(1, 1, 25), (2, 1, 26), (3, 1, 27), (4, 1, 28),
+	(5, 1, 29), (6, 1, 30), (7, 1, 31), (8, 1, 32),
+	(9, 1, 33), (10, 1, 34), (11, 1, 35), (12, 1, 36),
+	(13, 1, 37), (14, 1, 38), (15, 1, 39), (16, 1, 40),
+	(17, 1, 41), (18, 1, 42), (19, 1, 43), (20, 1, 44),
+	-- Encargado de cultivo (Lectura completa + CRUD reglas de alerta + marcar alertas)
+	(21, 2, 28), (22, 2, 32), (23, 2, 36), (24, 2, 40), (25, 2, 44),
+	(26, 2, 37), (27, 2, 38), (28, 2, 39), (29, 2, 42),
+	-- Supervisor (Solo lectura estricta)
+	(30, 3, 28), (31, 3, 32), (32, 3, 36), (33, 3, 40), (34, 3, 44),
+	-- Dispositivo IoT (Ingesta de mediciones + consulta de sensores/instalaciones)
+	(35, 4, 28), (36, 4, 32), (37, 4, 33);
 
 -- Volcando estructura para tabla aquaplants_db.django_migrations
 CREATE TABLE IF NOT EXISTS `django_migrations` (
@@ -221,9 +144,8 @@ CREATE TABLE IF NOT EXISTS `django_migrations` (
   `name` varchar(255) NOT NULL,
   `applied` datetime(6) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Volcando datos para la tabla aquaplants_db.django_migrations: ~20 rows (aproximadamente)
 INSERT INTO `django_migrations` (`id`, `app`, `name`, `applied`) VALUES
 	(1, 'contenttypes', '0001_initial', '2026-11-07 20:02:00.671270'),
 	(2, 'auth', '0001_initial', '2026-11-07 20:02:01.249749'),
@@ -244,99 +166,111 @@ INSERT INTO `django_migrations` (`id`, `app`, `name`, `applied`) VALUES
 	(17, 'auth', '0012_alter_user_first_name_max_length', '2026-11-07 20:02:01.765617'),
 	(18, 'sessions', '0001_initial', '2026-11-07 20:02:01.819611'),
 	(19, 'telemetria', '0001_initial', '2026-11-07 20:02:02.051860'),
-	(20, 'telemetria', '0002_reglaalerta_alertagenerada', '2026-11-07 20:02:02.250377');
-
--- Volcando estructura para tabla aquaplants_db.django_session
-CREATE TABLE IF NOT EXISTS `django_session` (
-  `session_key` varchar(40) NOT NULL,
-  `session_data` longtext NOT NULL,
-  `expire_date` datetime(6) NOT NULL,
-  PRIMARY KEY (`session_key`),
-  KEY `django_session_expire_date_a5c62663` (`expire_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Volcando datos para la tabla aquaplants_db.django_session: ~0 rows (aproximadamente)
-INSERT INTO `django_session` (`session_key`, `session_data`, `expire_date`) VALUES
-	('4715drqqlgguij1sc24cwp156cddg8x7', '.eJxVjMsOwiAQRf-FtSEM77p07zeQYQCpGkhKuzL-uzbpQrf3nHNfLOC21rCNvIQ5sTMDdvrdItIjtx2kO7Zb59TbusyR7wo_6ODXnvLzcrh_BxVH_dauUDFOkZi0t14JUIDeojQ52SgcmqQ9SJeV8KSFkMrlQpoKRgANE7H3B8O9NzM:1xPmeR:kd4arMvFn-Kh1u1NqAqClhIl_BzvnIZWugxnCd-D4GU', '2026-11-21 20:04:35.426619');
-
--- Volcando estructura para tabla aquaplants_db.telemetria_alertagenerada
-CREATE TABLE IF NOT EXISTS `telemetria_alertagenerada` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `mensaje` varchar(200) NOT NULL,
-  `leida` tinyint(1) NOT NULL,
-  `fecha_generacion` datetime(6) NOT NULL,
-  `medicion_id` uuid NOT NULL,
-  `regla_id` bigint(20) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `telemetria_alertagen_medicion_id_be847e7e_fk_telemetri` (`medicion_id`),
-  KEY `telemetria_alertagen_regla_id_e556724c_fk_telemetri` (`regla_id`),
-  CONSTRAINT `telemetria_alertagen_medicion_id_be847e7e_fk_telemetri` FOREIGN KEY (`medicion_id`) REFERENCES `telemetria_medicion` (`id`),
-  CONSTRAINT `telemetria_alertagen_regla_id_e556724c_fk_telemetri` FOREIGN KEY (`regla_id`) REFERENCES `telemetria_reglaalerta` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Volcando datos para la tabla aquaplants_db.telemetria_alertagenerada: ~0 rows (aproximadamente)
+	(20, 'telemetria', '0002_reglaalerta_alertagenerada', '2026-11-07 20:02:02.250377'),
+	(21, 'telemetria', '0003_sensor_activo_alter_sensor_tipo', '2026-11-08 04:55:10.120000');
 
 -- Volcando estructura para tabla aquaplants_db.telemetria_instalacion
 CREATE TABLE IF NOT EXISTS `telemetria_instalacion` (
   `id` uuid NOT NULL,
   `nombre` varchar(100) NOT NULL,
   `ubicacion` varchar(200) NOT NULL,
-  `activa` tinyint(1) NOT NULL,
+  `activa` tinyint(1) NOT NULL DEFAULT 1,
   `fecha_creacion` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `nombre` (`nombre`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Volcando datos para la tabla aquaplants_db.telemetria_instalacion: ~0 rows (aproximadamente)
 INSERT INTO `telemetria_instalacion` (`id`, `nombre`, `ubicacion`, `activa`, `fecha_creacion`) VALUES
-	('0db4cda7-1631-489a-b022-e3dadd297fd9', 'Instalacion1', 'Fila1', 1, '2026-11-07 20:04:58.775015');
+	('0db4cda7-1631-489a-b022-e3dadd297fd9', 'Huerto Hidroponico Norte', 'Invernadero Sector A', 1, '2026-11-07 20:04:58.775015'),
+	('a1b2c3d4-1111-4444-8888-1234567890ab', 'Torre Vertical Experimental', 'Laboratorio INACAP', 1, '2026-11-10 14:30:00.000000');
+
+-- Volcando estructura para tabla aquaplants_db.telemetria_sensor (incluye columna `activo`)
+CREATE TABLE IF NOT EXISTS `telemetria_sensor` (
+  `id` uuid NOT NULL,
+  `tipo` varchar(50) NOT NULL,
+  `modelo_hardware` varchar(100) NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `instalacion_id` uuid NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `telemetria_sensor_instalacion_id_b00d380f_fk_telemetri` (`instalacion_id`),
+  CONSTRAINT `telemetria_sensor_instalacion_id_b00d380f_fk_telemetri` FOREIGN KEY (`instalacion_id`) REFERENCES `telemetria_instalacion` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `telemetria_sensor` (`id`, `tipo`, `modelo_hardware`, `activo`, `instalacion_id`) VALUES
+	('590d5414-2e4a-4525-a863-ae80715368a0', 'temperatura_agua', 'Sonda Sumergible DS18B20', 1, '0db4cda7-1631-489a-b022-e3dadd297fd9'),
+	('66128b04-7c15-407e-94da-52eb744aaddb', 'humedad', 'Sensor de Humedad DHT22', 1, '0db4cda7-1631-489a-b022-e3dadd297fd9'),
+	('f4e111ad-6f9b-46a8-8bc5-d86913f691d5', 'ph', 'Sonda pH Analogica V1.1', 1, '0db4cda7-1631-489a-b022-e3dadd297fd9'),
+	('9c46b79c-10ac-4640-bf06-4745f5d1cc85', 'caudal', 'Flujometro YF-S201', 1, '0db4cda7-1631-489a-b022-e3dadd297fd9'),
+	('b7e21030-9f1a-4c32-9c2d-112233445566', 'co2', 'Sensor NDIR MH-Z19B', 0, '0db4cda7-1631-489a-b022-e3dadd297fd9'),
+	('c8d32141-0a2b-4d43-8d3e-223344556677', 'temperatura_aire', 'Sensor Ambiental DHT22 / BME280', 1, 'a1b2c3d4-1111-4444-8888-1234567890ab'),
+	('d9e43252-1b3c-4e54-9e4f-334455667788', 'nivel_estanque', 'Sensor Ultrasonico HC-SR04 / Nivel Liquido', 1, 'a1b2c3d4-1111-4444-8888-1234567890ab');
 
 -- Volcando estructura para tabla aquaplants_db.telemetria_medicion
 CREATE TABLE IF NOT EXISTS `telemetria_medicion` (
   `id` uuid NOT NULL,
   `valor` decimal(8,2) NOT NULL,
   `timestamp` datetime(6) NOT NULL,
-  `estado_conexion` tinyint(1) NOT NULL,
+  `estado_conexion` tinyint(1) NOT NULL DEFAULT 1,
   `sensor_id` uuid NOT NULL,
   PRIMARY KEY (`id`),
   KEY `telemetria_medicion_timestamp_1696ebaf` (`timestamp`),
   KEY `telemetria__sensor__c11693_idx` (`sensor_id`,`timestamp` DESC),
-  CONSTRAINT `telemetria_medicion_sensor_id_e46d961e_fk_telemetria_sensor_id` FOREIGN KEY (`sensor_id`) REFERENCES `telemetria_sensor` (`id`)
+  CONSTRAINT `telemetria_medicion_sensor_id_e46d961e_fk_telemetria_sensor_id` FOREIGN KEY (`sensor_id`) REFERENCES `telemetria_sensor` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Volcando datos para la tabla aquaplants_db.telemetria_medicion: ~0 rows (aproximadamente)
+INSERT INTO `telemetria_medicion` (`id`, `valor`, `timestamp`, `estado_conexion`, `sensor_id`) VALUES
+	('11111111-1111-4111-8111-000000000001', 21.40, '2026-11-15 18:00:00.000000', 1, '590d5414-2e4a-4525-a863-ae80715368a0'),
+	('11111111-1111-4111-8111-000000000002', 21.65, '2026-11-15 18:05:00.000000', 1, '590d5414-2e4a-4525-a863-ae80715368a0'),
+	('11111111-1111-4111-8111-000000000003', 27.80, '2026-11-15 18:10:00.000000', 1, '590d5414-2e4a-4525-a863-ae80715368a0'),
+	('11111111-1111-4111-8111-000000000004', 65.20, '2026-11-15 18:00:05.000000', 1, '66128b04-7c15-407e-94da-52eb744aaddb'),
+	('11111111-1111-4111-8111-000000000005', 66.10, '2026-11-15 18:05:05.000000', 1, '66128b04-7c15-407e-94da-52eb744aaddb'),
+	('11111111-1111-4111-8111-000000000006', 6.10,  '2026-11-15 18:00:10.000000', 1, 'f4e111ad-6f9b-46a8-8bc5-d86913f691d5'),
+	('11111111-1111-4111-8111-000000000007', 6.15,  '2026-11-15 18:05:10.000000', 1, 'f4e111ad-6f9b-46a8-8bc5-d86913f691d5'),
+	('11111111-1111-4111-8111-000000000008', 6.08,  '2026-11-15 18:10:10.000000', 1, 'f4e111ad-6f9b-46a8-8bc5-d86913f691d5'),
+	('11111111-1111-4111-8111-000000000009', 2.45,  '2026-11-15 18:00:15.000000', 1, '9c46b79c-10ac-4640-bf06-4745f5d1cc85'),
+	('11111111-1111-4111-8111-000000000010', 0.00,  '2026-11-15 18:05:15.000000', 0, '9c46b79c-10ac-4640-bf06-4745f5d1cc85'),
+	('11111111-1111-4111-8111-000000000011', 23.50, '2026-11-15 18:00:20.000000', 1, 'c8d32141-0a2b-4d43-8d3e-223344556677'),
+	('11111111-1111-4111-8111-000000000012', 24.10, '2026-11-15 18:05:20.000000', 1, 'c8d32141-0a2b-4d43-8d3e-223344556677'),
+	('11111111-1111-4111-8111-000000000013', 78.50, '2026-11-15 18:00:25.000000', 1, 'd9e43252-1b3c-4e54-9e4f-334455667788'),
+	('11111111-1111-4111-8111-000000000014', 22.00, '2026-11-15 18:10:25.000000', 1, 'd9e43252-1b3c-4e54-9e4f-334455667788');
 
 -- Volcando estructura para tabla aquaplants_db.telemetria_reglaalerta
 CREATE TABLE IF NOT EXISTS `telemetria_reglaalerta` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `limite_minimo` double DEFAULT NULL,
   `limite_maximo` double DEFAULT NULL,
-  `activa` tinyint(1) NOT NULL,
+  `activa` tinyint(1) NOT NULL DEFAULT 1,
   `sensor_id` uuid NOT NULL,
   PRIMARY KEY (`id`),
   KEY `telemetria_reglaaler_sensor_id_3bf04f11_fk_telemetri` (`sensor_id`),
-  CONSTRAINT `telemetria_reglaaler_sensor_id_3bf04f11_fk_telemetri` FOREIGN KEY (`sensor_id`) REFERENCES `telemetria_sensor` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  CONSTRAINT `telemetria_reglaaler_sensor_id_3bf04f11_fk_telemetri` FOREIGN KEY (`sensor_id`) REFERENCES `telemetria_sensor` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Volcando datos para la tabla aquaplants_db.telemetria_reglaalerta: ~4 rows (aproximadamente)
+INSERT INTO `telemetria_reglaalerta` (`id`, `limite_minimo`, `limite_maximo`, `activa`, `sensor_id`) VALUES
+	(1, 5.5, 6.8, 1, 'f4e111ad-6f9b-46a8-8bc5-d86913f691d5'),
+	(2, 50.0, 80.0, 1, '66128b04-7c15-407e-94da-52eb744aaddb'),
+	(3, 18.0, 24.0, 1, '590d5414-2e4a-4525-a863-ae80715368a0'),
+	(4, 1.5, 4.0, 1, '9c46b79c-10ac-4640-bf06-4745f5d1cc85'),
+	(5, 30.0, 95.0, 1, 'd9e43252-1b3c-4e54-9e4f-334455667788');
 
--- Volcando estructura para tabla aquaplants_db.telemetria_sensor
-CREATE TABLE IF NOT EXISTS `telemetria_sensor` (
-  `id` uuid NOT NULL,
-  `tipo` varchar(50) NOT NULL,
-  `modelo_hardware` varchar(100) NOT NULL,
-  `instalacion_id` uuid NOT NULL,
+-- Volcando estructura para tabla aquaplants_db.telemetria_alertagenerada
+CREATE TABLE IF NOT EXISTS `telemetria_alertagenerada` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `mensaje` varchar(200) NOT NULL,
+  `leida` tinyint(1) NOT NULL DEFAULT 0,
+  `fecha_generacion` datetime(6) NOT NULL,
+  `medicion_id` uuid NOT NULL,
+  `regla_id` bigint(20) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `telemetria_sensor_instalacion_id_b00d380f_fk_telemetri` (`instalacion_id`),
-  CONSTRAINT `telemetria_sensor_instalacion_id_b00d380f_fk_telemetri` FOREIGN KEY (`instalacion_id`) REFERENCES `telemetria_instalacion` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  KEY `telemetria_alertagen_medicion_id_be847e7e_fk_telemetri` (`medicion_id`),
+  KEY `telemetria_alertagen_regla_id_e556724c_fk_telemetri` (`regla_id`),
+  CONSTRAINT `telemetria_alertagen_medicion_id_be847e7e_fk_telemetri` FOREIGN KEY (`medicion_id`) REFERENCES `telemetria_medicion` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `telemetria_alertagen_regla_id_e556724c_fk_telemetri` FOREIGN KEY (`regla_id`) REFERENCES `telemetria_reglaalerta` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Volcando datos para la tabla aquaplants_db.telemetria_sensor: ~4 rows (aproximadamente)
-INSERT INTO `telemetria_sensor` (`id`, `tipo`, `modelo_hardware`, `instalacion_id`) VALUES
-	('9c46b79c-10ac-4640-bf06-4745f5d1cc85', 'caudal', 'SimuadorIot', '0db4cda7-1631-489a-b022-e3dadd297fd9'),
-	('66128b04-7c15-407e-94da-52eb744aaddb', 'humedad', 'SimuadorIot', '0db4cda7-1631-489a-b022-e3dadd297fd9'),
-	('590d5414-2e4a-4525-a863-ae80715368a0', 'temperatura', 'SimuadorIot', '0db4cda7-1631-489a-b022-e3dadd297fd9'),
-	('f4e111ad-6f9b-46a8-8bc5-d86913f691d5', 'ph', 'SimuadorIot', '0db4cda7-1631-489a-b022-e3dadd297fd9');
+INSERT INTO `telemetria_alertagenerada` (`id`, `mensaje`, `leida`, `fecha_generacion`, `medicion_id`, `regla_id`) VALUES
+	(1, '¡ALERTA ROJA! Temperatura del Agua / Solución ALTO: 27.80°C (Límite: 24.0°C)', 0, '2026-11-15 18:10:00.050000', '11111111-1111-4111-8111-000000000003', 3),
+	(2, '¡ALERTA AZUL! Nivel del Estanque BAJO: 22.00% (Límite: 30.0%)', 0, '2026-11-15 18:10:25.050000', '11111111-1111-4111-8111-000000000014', 5);
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

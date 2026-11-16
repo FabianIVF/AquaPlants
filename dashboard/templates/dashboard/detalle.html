@@ -24,7 +24,9 @@
         </div>
         <div class="page-actions">
             <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm"><i class="bi bi-clock-history"></i>Historial</a>
+            {% if perms.telemetria.change_instalacion %}
             <a href="{% url 'editar_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm"><i class="bi bi-pencil"></i>Editar instalación</a>
+            {% endif %}
             <a href="{% url 'inicio_dashboard' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i>Volver al monitor</a>
         </div>
     </div>
@@ -159,8 +161,10 @@
                     <tr>
                         <td colspan="5" class="empty">
                             No hay reglas de alerta configuradas para esta instalación.
+                            {% if perms.telemetria.add_reglaalerta %}
                             <br>
                             <a href="{% url 'crear_regla' instalacion.pk %}" class="btn btn-ghost btn-sm mt-2"><i class="bi bi-plus-lg"></i>Crear la primera regla</a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

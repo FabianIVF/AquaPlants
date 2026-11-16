@@ -325,6 +325,43 @@ class SeguridadPunto6TestCase(TestCase):
         self.assertTrue(user_iot.has_perm('telemetria.view_instalacion'))
         self.assertTrue(user_iot.groups.filter(name='Dispositivo IoT').exists())
 
+    def test_setup_roles_diferencia_admin_cultivador_supervisor(self):
+        """
+        Verifica la jerarquía RBAC completa generada por setup_roles:
+        - Administrador (sin is_superuser): crea instalaciones y reglas (200).
+        - Encargado de cultivo: crea reglas (200) pero NO instalaciones (403).
+        - Supervisor: solo lectura, NO crea instalaciones ni reglas (403).
+        """
+        call_command('setup_roles', stdout=StringIO())
+        instalacion = Instalacion.objects.create(nombre="Huerto RBAC", ubicacion="Sector Test")
+
+        admin_grupo = User.objects.create_user(username='admin_grupo', password='Pass1234!')
+        admin_grupo.groups.add(Group.objects.get(name='Administrador'))
+
+        cultivador = User.objects.create_user(username='cultivador_test', password='Pass1234!')
+        cultivador.groups.add(Group.objects.get(name='Encargado de cultivo'))
+
+        supervisor = User.objects.create_user(username='sup_rbac', password='Pass1234!')
+        supervisor.groups.add(Group.objects.get(name='Supervisor'))
+
+        client = Client()
+
+        # Administrador por grupo accede a instalaciones y reglas
+        client.login(username='admin_grupo', password='Pass1234!')
+        self.assertEqual(client.get('/dashboard/instalacion/crear/').status_code, 200)
+        self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/regla/crear/').status_code, 200)
+
+        # Encargado de cultivo gestiona reglas pero NO huertos
+        client.login(username='cultivador_test', password='Pass1234!')
+        self.assertEqual(client.get('/dashboard/instalacion/crear/').status_code, 403)
+        self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/editar/').status_code, 403)
+        self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/regla/crear/').status_code, 200)
+
+        # Supervisor es estrictamente solo lectura
+        client.login(username='sup_rbac', password='Pass1234!')
+        self.assertEqual(client.get('/dashboard/instalacion/crear/').status_code, 403)
+        self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/regla/crear/').status_code, 403)
+
 
 class DashboardLiveTelemetriaTestCase(TestCase):
     """

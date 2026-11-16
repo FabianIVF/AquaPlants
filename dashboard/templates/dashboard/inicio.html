@@ -99,7 +99,9 @@
             <div class="panel">
                 <div class="panel-body text-center py-5">
                     <p class="t-muted mb-3">No hay instalaciones de cultivo registradas.</p>
+                    {% if perms.telemetria.add_instalacion %}
                     <a href="{% url 'crear_instalacion' %}" class="btn btn-primary-ap btn-sm"><i class="bi bi-plus-lg"></i>Crear la primera instalación</a>
+                    {% endif %}
                 </div>
             </div>
         </div>

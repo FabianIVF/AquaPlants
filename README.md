@@ -55,9 +55,10 @@ El sistema está diseñado bajo una arquitectura modular desacoplada:
   - **Primera Opción (Entorno Portátil / Instituto / PythonAnywhere Free Tier):** Base de datos relacional `SQLite3` (`db.sqlite3`) habilitada por defecto (`DB_ENGINE=sqlite`), sin requerir servidores externos de BD.
   - **Entorno Local Opcional (MariaDB / MySQL):** Conmutable mediante `DB_ENGINE=mysql` en `.env` usando conector `pymysql` y cliente `HeidiSQL`.
 * **Seguridad Basada en Roles (RBAC Estricto):**
-  - **Administrador:** Acceso irrestricto; creación, edición y eliminación de instalaciones y reglas.
-  - **Supervisor:** Solo lectura (`view_instalacion`, `view_medicion`). No puede alterar datos ni acceder a formularios de gestión (HTTP 403 Forbidden garantizado por decoradores y pruebas).
-  - **Dispositivo IoT (`iot_device`):** Cuenta de servicio con permiso exclusivo de inserción (`add_medicion`) vía API REST.
+  - **Administrador:** Acceso completo al dominio (`Instalacion`, `Sensor`, `Medicion`, `ReglaAlerta`, `AlertaGenerada`), creación, edición y eliminación de huertos y reglas.
+  - **Encargado de cultivo:** Lectura completa del monitoreo y gestión CRUD de **reglas de alerta** (`ReglaAlerta`), sin permisos para crear, editar ni eliminar instalaciones (HTTP 403 Forbidden).
+  - **Supervisor:** Solo lectura estricta (`view_*` en todo el dominio). No puede alterar huertos ni reglas de alerta (HTTP 403 Forbidden garantizado por decoradores y pruebas).
+  - **Dispositivo IoT (`iot_device`):** Cuenta de servicio con permiso de inserción (`add_medicion`) y lectura de inventario (`view_sensor`, `view_instalacion`) vía API REST.
 * **Interfaz de Usuario de Nivel SaaS:** Libre de emojis, tipografía optimizada *Inter*, iconografía vectorial *Bootstrap Icons*, microinteracciones y paleta de colores contenida (`#34a37c` acento).
 
 ---
@@ -211,7 +212,7 @@ python manage.py test telemetria -v 2
 ```
 
 ### Resumen del Reporte Oficial:
-* **Total de Pruebas:** 23
+* **Total de Pruebas:** 24
 * **Fallos (Failures):** 0
 * **Errores (Errors):** 0
 * **Tasa de Éxito:** **100% OK**

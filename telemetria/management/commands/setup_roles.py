@@ -2,15 +2,16 @@ import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, Permission, User
 from django.contrib.contenttypes.models import ContentType
-from telemetria.models import Instalacion, Sensor, Medicion
+from telemetria.models import Instalacion, Sensor, Medicion, ReglaAlerta, AlertaGenerada
+
 
 class Command(BaseCommand):  # Convierte este script en una herramienta de consola segura
     help = 'Configura los roles de seguridad, permisos RBAC y credenciales IoT para AquaPlants'
 
     def handle(self, *args, **kwargs):
         # 1. Definición de los grupos basados en el negocio
-        roles = ['Administrador', 'Supervisor', 'Encargado de cultivo', 'Dispositivo IoT']
-        
+        roles = ['Administrador', 'Encargado de cultivo', 'Supervisor', 'Dispositivo IoT']
+
         for rol in roles:
             # get_or_create evita que el sistema falle si el rol ya existe (Idempotencia)
             grupo, creado = Group.objects.get_or_create(name=rol)
@@ -19,16 +20,38 @@ class Command(BaseCommand):  # Convierte este script en una herramienta de conso
             else:
                 self.stdout.write(self.style.WARNING(f'El rol {rol} ya existía.'))
 
-        # 2. Obtener las referencias de los modelos en el sistema de permisos de Django
-        content_type_instalacion = ContentType.objects.get_for_model(Instalacion)
-        content_type_sensor = ContentType.objects.get_for_model(Sensor)
-        content_type_medicion = ContentType.objects.get_for_model(Medicion)
+        # 2. Obtener las referencias de todos los modelos del dominio en Django
+        ct_instalacion = ContentType.objects.get_for_model(Instalacion)
+        ct_sensor = ContentType.objects.get_for_model(Sensor)
+        ct_medicion = ContentType.objects.get_for_model(Medicion)
+        ct_regla = ContentType.objects.get_for_model(ReglaAlerta)
+        ct_alerta = ContentType.objects.get_for_model(AlertaGenerada)
 
-        # 3. Asignación de permisos al Supervisor (Principio de Mínimo Privilegio: Solo Lectura)
+        todos_modelos = [ct_instalacion, ct_sensor, ct_medicion, ct_regla, ct_alerta]
+
+        # 3a. Administrador: Acceso total a instalaciones, sensores, mediciones, reglas y alertas
+        grupo_admin = Group.objects.get(name='Administrador')
+        permisos_admin = Permission.objects.filter(content_type__in=todos_modelos)
+        grupo_admin.permissions.set(permisos_admin)
+
+        # 3b. Encargado de cultivo (Cultivador): Monitoreo completo + gestión de reglas/alertas,
+        #     SIN permisos para crear, modificar ni eliminar instalaciones (exclusivo de Administrador)
+        grupo_cultivador = Group.objects.get(name='Encargado de cultivo')
+        permisos_vista_cultivador = Permission.objects.filter(
+            content_type__in=todos_modelos,
+            codename__startswith='view_'
+        )
+        permisos_reglas = Permission.objects.filter(content_type=ct_regla)
+        perm_change_alerta = Permission.objects.filter(content_type=ct_alerta, codename='change_alertagenerada')
+        grupo_cultivador.permissions.set(
+            list(permisos_vista_cultivador) + list(permisos_reglas) + list(perm_change_alerta)
+        )
+
+        # 3c. Supervisor: Principio de Mínimo Privilegio (Solo Lectura estricta)
         grupo_supervisor = Group.objects.get(name='Supervisor')
         permisos_lectura = Permission.objects.filter(
-            content_type__in=[content_type_instalacion, content_type_medicion, content_type_sensor],
-            codename__startswith='view_'  # Expresión que filtra solo los permisos de "ver"
+            content_type__in=todos_modelos,
+            codename__startswith='view_'
         )
         grupo_supervisor.permissions.set(permisos_lectura)
 
@@ -43,9 +66,9 @@ class Command(BaseCommand):  # Convierte este script en una herramienta de conso
         iot_user.save()
 
         # Permisos requeridos para reportar telemetría y consultar inventario de sensores
-        perm_add_medicion = Permission.objects.get(content_type=content_type_medicion, codename='add_medicion')
-        perm_view_sensor = Permission.objects.get(content_type=content_type_sensor, codename='view_sensor')
-        perm_view_instalacion = Permission.objects.get(content_type=content_type_instalacion, codename='view_instalacion')
+        perm_add_medicion = Permission.objects.get(content_type=ct_medicion, codename='add_medicion')
+        perm_view_sensor = Permission.objects.get(content_type=ct_sensor, codename='view_sensor')
+        perm_view_instalacion = Permission.objects.get(content_type=ct_instalacion, codename='view_instalacion')
 
         permisos_iot = [perm_add_medicion, perm_view_sensor, perm_view_instalacion]
         iot_user.user_permissions.set(permisos_iot)
