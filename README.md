@@ -51,9 +51,9 @@ El sistema está diseñado bajo una arquitectura modular desacoplada:
 ### Características Técnicas Destacadas:
 * **Identificadores Únicos Universales (UUIDv4):** Se aplican como Primary Key (`id`) a las entidades centrales de negocio (`Instalacion`, `Sensor`, `Medicion`) mediante `models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)`. Esta decisión mitiga vulnerabilidades de enumeración horizontal (IDOR) e inferencia no autorizada de volumen de datos o tasa de actividad, mientras que las relaciones (`ForeignKey`) y tablas de auditoría/alertas preservan la integridad referencial estándar relacional.
 * **Control Estricto de Hosts (`ALLOWED_HOSTS`):** Se lee y parsea dinámicamente desde el archivo de entorno `.env` como una lista delimitada por comas, respaldado por un fallback seguro restrictivo para entornos de desarrollo y pruebas (`127.0.0.1`, `localhost`, `testserver`, `.pythonanywhere.com`), evitando deliberadamente wildcards permisivos o peligrosos (`'*'`) para neutralizar ataques de manipulación o envenenamiento de cabecera HTTP Host (*Host Header Poisoning / Cache Poisoning*).
-* **Persistencia Dual Conmutable:**
-  - **Entorno Local (Desarrollo / Instituto):** MariaDB/MySQL mediante conector `pymysql` y cliente `HeidiSQL`.
-  - **Entorno Nube (PythonAnywhere Free Tier):** Base de datos relacional `SQLite3`, optimizada para cuotas gratuitas sin soporte de MySQL externo (`DB_ENGINE=sqlite`).
+* **Persistencia Dual Conmutable (SQLite3 por defecto):**
+  - **Primera Opción (Entorno Portátil / Instituto / PythonAnywhere Free Tier):** Base de datos relacional `SQLite3` (`db.sqlite3`) habilitada por defecto (`DB_ENGINE=sqlite`), sin requerir servidores externos de BD.
+  - **Entorno Local Opcional (MariaDB / MySQL):** Conmutable mediante `DB_ENGINE=mysql` en `.env` usando conector `pymysql` y cliente `HeidiSQL`.
 * **Seguridad Basada en Roles (RBAC Estricto):**
   - **Administrador:** Acceso irrestricto; creación, edición y eliminación de instalaciones y reglas.
   - **Supervisor:** Solo lectura (`view_instalacion`, `view_medicion`). No puede alterar datos ni acceder a formularios de gestión (HTTP 403 Forbidden garantizado por decoradores y pruebas).
@@ -72,8 +72,8 @@ SECRET_KEY=django-insecure-+p#cpiotzzi(wd=zpz8&4-vf_2851+_&ma445x%+gln)!s2yi&
 DEBUG=True
 ALLOWED_HOSTS=127.0.0.1,localhost,testserver,.pythonanywhere.com
 
-# Motor de Base de Datos: 'mysql' (Local) o 'sqlite' (PythonAnywhere / Tests)
-DB_ENGINE=mysql
+# Motor de Base de Datos: 'sqlite' (Por defecto / Portátil / PythonAnywhere) o 'mysql' (MariaDB local)
+DB_ENGINE=sqlite
 
 # Credenciales de MariaDB / MySQL (Solo requeridas si DB_ENGINE=mysql)
 DB_NAME=aquaplants_db
@@ -98,15 +98,15 @@ En los laboratorios donde existan restricciones de permisos o incompatibilidades
    git clone https://github.com/FabianIVF/AquaPlants.git
    cd AquaPlants
    ```
-2. Asegúrate de tener MariaDB/MySQL levantado con la base de datos `aquaplants_db`.
+2. Por defecto el proyecto inicia directamente con **SQLite3** (`db.sqlite3`) sin configuraciones adicionales. *(Si deseas usar MariaDB/MySQL local, crea un `.env` con `DB_ENGINE=mysql` y la base de datos `aquaplants_db`)*.
 3. Ejecuta las migraciones y roles:
    ```cmd
    python311\python.exe manage.py migrate
    python311\python.exe manage.py setup_roles
    ```
-4. Inicia el servidor de desarrollo:
+4. Inicia el servidor de desarrollo (si no creaste `.env` con `DEBUG=True`, usa `--insecure` para servir archivos estáticos localmente):
    ```cmd
-   python311\python.exe manage.py runserver
+   python311\python.exe manage.py runserver --insecure
    ```
 5. Accede desde tu navegador a `http://127.0.0.1:8000/`.
 
@@ -211,7 +211,7 @@ python manage.py test telemetria -v 2
 ```
 
 ### Resumen del Reporte Oficial:
-* **Total de Pruebas:** 21
+* **Total de Pruebas:** 23
 * **Fallos (Failures):** 0
 * **Errores (Errors):** 0
 * **Tasa de Éxito:** **100% OK**

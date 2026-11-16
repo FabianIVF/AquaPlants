@@ -5,6 +5,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.urls import reverse
 from django.http import JsonResponse
+from django.utils import timezone
 from telemetria.models import Instalacion, Sensor, Medicion, AlertaGenerada, ReglaAlerta
 from .forms import InstalacionForm, ReglaAlertaForm
 
@@ -206,19 +207,22 @@ def api_telemetria_live(request, instalacion_id):
 
     datos_sensores = {}
     for sensor in sensores:
-        mediciones_qs = (
+        # Obtener las últimas 20 mediciones reales (más recientes) y reordenarlas cronológicamente para Chart.js
+        mediciones_qs = list(
             Medicion.objects
             .filter(sensor=sensor)
-            .order_by('timestamp')
-            .values('valor', 'timestamp', 'estado_conexion')
-        )[:20]
+            .order_by('-timestamp')
+            .values('valor', 'timestamp', 'estado_conexion')[:20]
+        )
+        mediciones_qs.reverse()
 
         datos_sensores[sensor.tipo] = {
             "id": str(sensor.id),
             "mediciones": [
                 {
                     "valor": float(m["valor"]),
-                    "timestamp": m["timestamp"].strftime("%H:%M:%S"),
+                    "timestamp": timezone.localtime(m["timestamp"]).strftime("%H:%M:%S"),
+                    "timestamp_iso": timezone.localtime(m["timestamp"]).isoformat(),
                     "estado_conexion": m["estado_conexion"],
                 }
                 for m in mediciones_qs
@@ -235,7 +239,7 @@ def api_telemetria_live(request, instalacion_id):
     alertas = [
         {
             "mensaje": a["mensaje"],
-            "hora": a["fecha_generacion"].strftime("%H:%M:%S"),
+            "hora": timezone.localtime(a["fecha_generacion"]).strftime("%H:%M:%S"),
             "leida": a["leida"],
         }
         for a in alertas_qs

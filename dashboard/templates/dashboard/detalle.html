@@ -307,8 +307,8 @@ function actualizarTabla(sensoresDatos) {
     for (const [tipo, datos] of Object.entries(sensoresDatos)) {
         datos.mediciones.forEach(m => filas.push({ tipo, ...m }));
     }
-    // Ordenar por timestamp desc (texto HH:MM:SS)
-    filas.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    // Ordenar por fecha/hora ISO descendente (fallback a HH:MM:SS)
+    filas.sort((a, b) => (b.timestamp_iso || b.timestamp).localeCompare(a.timestamp_iso || a.timestamp));
 
     const tbody = document.getElementById('cuerpo-tabla');
     if (!tbody) return;

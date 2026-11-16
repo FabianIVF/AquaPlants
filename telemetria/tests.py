@@ -1,3 +1,4 @@
+from datetime import timedelta
 from io import StringIO
 from django.test import TestCase, Client
 from django.conf import settings
@@ -5,6 +6,7 @@ from django.core.management import call_command
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from rest_framework.test import APITestCase
 from rest_framework import status
 
@@ -322,4 +324,43 @@ class SeguridadPunto6TestCase(TestCase):
         self.assertTrue(user_iot.has_perm('telemetria.view_sensor'))
         self.assertTrue(user_iot.has_perm('telemetria.view_instalacion'))
         self.assertTrue(user_iot.groups.filter(name='Dispositivo IoT').exists())
+
+
+class DashboardLiveTelemetriaTestCase(TestCase):
+    """
+    Verifica que SQLite sea el motor por defecto y que el endpoint en vivo
+    del dashboard retorne siempre las 20 mediciones más recientes.
+    """
+    def setUp(self):
+        self.client = Client()
+        self.admin_user = User.objects.create_user(username='admin_live', password='Password123!')
+        self.instalacion = Instalacion.objects.create(nombre="Huerto Live", ubicacion="Lab 1")
+        self.sensor = Sensor.objects.create(
+            instalacion=self.instalacion,
+            tipo="ph",
+            modelo_hardware="Sonda pH Test",
+            activo=True
+        )
+
+    def test_sqlite_es_motor_por_defecto(self):
+        """Sin variables de entorno externas, SQLite debe ser la primera opción."""
+        self.assertEqual(settings.DB_ENGINE, 'sqlite')
+        self.assertEqual(settings.DATABASES['default']['ENGINE'], 'django.db.backends.sqlite3')
+
+    def test_api_telemetria_live_devuelve_ultimas_20_en_orden_cronologico(self):
+        """Con más de 20 mediciones, /live/ debe devolver las 20 más recientes (no las 20 primeras)."""
+        base = timezone.now() - timedelta(minutes=5)
+        for i in range(1, 26):
+            med = Medicion.objects.create(sensor=self.sensor, valor=float(i), estado_conexion=True)
+            Medicion.objects.filter(pk=med.pk).update(timestamp=base + timedelta(seconds=i * 5))
+
+        self.client.login(username='admin_live', password='Password123!')
+        resp = self.client.get(f'/dashboard/instalacion/{self.instalacion.pk}/live/')
+        self.assertEqual(resp.status_code, 200)
+
+        mediciones = resp.json()['sensores']['ph']['mediciones']
+        self.assertEqual(len(mediciones), 20)
+        valores = [m['valor'] for m in mediciones]
+        self.assertEqual(valores[0], 6.0)
+        self.assertEqual(valores[-1], 25.0)
 
