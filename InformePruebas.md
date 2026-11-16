@@ -32,7 +32,7 @@ python manage.py test telemetria -v 2
 
 ### Salida Consignada del Protocolo:
 ```text
-Creating test database for alias 'default' ('test_aquaplants_db')...
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
 Found 27 test(s).
 Operations to perform:
   Synchronize unmigrated apps: corsheaders, messages, rest_framework, staticfiles
@@ -50,6 +50,11 @@ test_api_rechaza_lectura_de_sensor_desactivado ... ok
 test_api_rechaza_peticion_anonima ... ok
 test_api_rechaza_valor_negativo_en_payload ... ok
 test_iot_device_puede_enviar_medicion ... ok
+test_api_telemetria_live_devuelve_ultimas_20_en_orden_cronologico ... ok
+test_carga_ingesta_y_consulta_sqlite_en_tiempo_acotado ... ok
+test_historial_muestra_ultima_comunicacion_y_filtra_por_sensor ... ok
+test_panel_vivo_incluye_ultima_comunicacion ... ok
+test_sqlite_es_motor_por_defecto ... ok
 test_humedad_porcentaje_mayor_a_100_rechazado ... ok
 test_instalacion_form_crea_sensores_seleccionados ... ok
 test_minimo_mayor_que_maximo_rechazado ... ok
@@ -61,6 +66,10 @@ test_alerta_azul_generada_al_caer_bajo_minimo ... ok
 test_alerta_roja_generada_al_superar_maximo ... ok
 test_fallo_conexion_no_genera_alerta_falsa ... ok
 test_sin_alerta_dentro_del_rango_optimo ... ok
+test_settings_allowed_hosts_sin_comodin ... ok
+test_settings_cors_no_permite_todos_los_origenes_por_defecto ... ok
+test_setup_roles_aprovisiona_dispositivo_iot ... ok
+test_setup_roles_diferencia_admin_cultivador_supervisor ... ok
 test_admin_puede_acceder_crear_instalacion ... ok
 test_supervisor_no_puede_crear_instalacion ... ok
 test_usuario_anonimo_redirigido_al_login ... ok
@@ -69,7 +78,7 @@ test_usuario_anonimo_redirigido_al_login ... ok
 Ran 27 tests in 22.283s
 
 OK
-Destroying test database for alias 'default' ('test_aquaplants_db')...
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
 ```
 
 ---
