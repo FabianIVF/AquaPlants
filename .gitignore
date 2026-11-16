@@ -5,3 +5,10 @@ __pycache__/
 .env
 staticfiles/
 *.sqlite3
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.pytest_cache/
+
