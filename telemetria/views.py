@@ -72,10 +72,16 @@ class MedicionViewSet(viewsets.ModelViewSet):
             mensaje_alerta = None
 
             if regla.limite_maximo is not None and medicion_guardada.valor > regla.limite_maximo:
-                mensaje_alerta = f"¡ALERTA ROJA! {nombre_sensor} ALTO: {medicion_guardada.valor}{unidad_str} (Límite: {regla.limite_maximo}{unidad_str})"
+                mensaje_alerta = (
+                    f"¡ALERTA ROJA! {nombre_sensor} ALTO: {medicion_guardada.valor}{unidad_str} "
+                    f"(Límite: {regla.limite_maximo}{unidad_str})"
+                )
 
             elif regla.limite_minimo is not None and medicion_guardada.valor < regla.limite_minimo:
-                mensaje_alerta = f"¡ALERTA AZUL! {nombre_sensor} BAJO: {medicion_guardada.valor}{unidad_str} (Límite: {regla.limite_minimo}{unidad_str})"
+                mensaje_alerta = (
+                    f"¡ALERTA AZUL! {nombre_sensor} BAJO: {medicion_guardada.valor}{unidad_str} "
+                    f"(Límite: {regla.limite_minimo}{unidad_str})"
+                )
 
             if mensaje_alerta:
                 AlertaGenerada.objects.create(

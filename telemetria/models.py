@@ -1,7 +1,5 @@
 from django.db import models
 from django.core.validators import MinValueValidator
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 import uuid
 
 # ============================================================
@@ -126,7 +124,7 @@ class Sensor(models.Model):
         ('fotoperiodo', 'Fotoperiodo (horas/día)'),
         ('temperatura', 'Temperatura General (Legado)'),
     ]
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='sensores')
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES)
@@ -159,10 +157,10 @@ class Sensor(models.Model):
 class Medicion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE, related_name='mediciones')
-    
+
     # Validación a nivel de base de datos (valores positivos o cero)
     valor = models.DecimalField(
-        max_digits=8, 
+        max_digits=8,
         decimal_places=2,
         validators=[MinValueValidator(0.0)]
     )

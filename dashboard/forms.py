@@ -28,7 +28,10 @@ class InstalacionForm(forms.ModelForm):
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         required=False,
         label="Variables / Sensores a Monitorear en este Huerto",
-        help_text="Marca o desmarca los sensores según las necesidades operativas de esta instalación. Puedes modificarlos en cualquier momento."
+        help_text=(
+            "Marca o desmarca los sensores según las necesidades operativas de esta instalación. "
+            "Puedes modificarlos en cualquier momento."
+        )
     )
 
     class Meta:
@@ -142,7 +145,7 @@ class ReglaAlertaForm(forms.ModelForm):
         if instalacion:
             # Sensores activos exclusivos de ESTA instalación
             base_qs = Sensor.objects.filter(instalacion=instalacion, activo=True)
-            
+
             # Excluir sensores que ya tienen una regla configurada en este huerto
             reglas_existentes = ReglaAlerta.objects.filter(sensor__instalacion=instalacion)
             if self.instance and self.instance.pk:
@@ -165,7 +168,9 @@ class ReglaAlertaForm(forms.ModelForm):
             return cleaned_data
 
         if minimo is None and maximo is None:
-            raise forms.ValidationError("Debes establecer al menos un límite (Mínimo o Máximo) para activar la regla de alerta.")
+            raise forms.ValidationError(
+                "Debes establecer al menos un límite (Mínimo o Máximo) para activar la regla de alerta."
+            )
 
         if minimo is not None and maximo is not None and minimo >= maximo:
             self.add_error(
@@ -186,7 +191,8 @@ class ReglaAlertaForm(forms.ModelForm):
                     if valor < 0.0 or valor > 100.0:
                         self.add_error(
                             campo,
-                            f"Para {sensor.get_tipo_display()}, el valor {nombre_lim} debe estar en el rango de 0% a 100% (se ingresó {valor}%)."
+                            f"Para {sensor.get_tipo_display()}, el valor {nombre_lim} debe estar "
+                            f"en el rango de 0% a 100% (se ingresó {valor}%)."
                         )
 
         # 2. Validación estricta de pH: 0.0 a 14.0
@@ -206,7 +212,8 @@ class ReglaAlertaForm(forms.ModelForm):
                     if valor < 0.0 or valor > 24.0:
                         self.add_error(
                             campo,
-                            f"El fotoperiodo representa horas de luz al día, por lo que debe estar entre 0.0 y 24.0 horas (se ingresó {valor} h)."
+                            f"El fotoperiodo representa horas de luz al día, por lo que debe estar "
+                            f"entre 0.0 y 24.0 horas (se ingresó {valor} h)."
                         )
 
         # 4. Validación de Dióxido de Carbono: >= 0 ppm
@@ -236,7 +243,8 @@ class ReglaAlertaForm(forms.ModelForm):
                     if valor < 0.0 or valor > 60.0:
                         self.add_error(
                             campo,
-                            f"Para {sensor.get_tipo_display()}, el valor {nombre_lim} debe estar en el rango operativo biológico de 0.0°C a 60.0°C."
+                            f"Para {sensor.get_tipo_display()}, el valor {nombre_lim} debe estar "
+                            "en el rango operativo biológico de 0.0°C a 60.0°C."
                         )
 
         return cleaned_data

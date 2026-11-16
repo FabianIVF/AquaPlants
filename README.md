@@ -187,19 +187,21 @@ python simulador_iot.py --instalacion "Huerto1A" --anomalias 0.3 --intervalo 2
 
 ---
 
-## 5. Matriz de Trazabilidad Técnica (Criterio 3.1.6.12 - 10 pts)
+## 5. Matriz de Trazabilidad Completa ES1 → ES2 → ES3 (Criterio 3.1.6.12)
 
-Alineación completa entre requerimientos pedagógicos, componentes implementados y casos de prueba automatizados:
+Alineación completa entre necesidades e historias de usuario (ES1), diseño y arquitectura (ES2), implementación y casos de prueba automatizados (ES3):
 
-| ID Req. | Requerimiento de Negocio / HU | Archivo de Código | Ruta / Endpoint | Caso de Prueba (`tests.py`) | Resultado Obtenido vs Esperado |
+| ID Req. | Necesidad / HU (ES1-ES2) | Requerimiento (RF / RNF) | Archivo / Ruta | Caso de Prueba (`tests.py`) | Resultado Obtenido vs Esperado |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| **RF-01** | **Gestión CRUD de Instalaciones:** El administrador puede crear, listar, editar y dar de baja huertos. | `dashboard/views.py`<br>`dashboard/forms.py` | `/dashboard/`<br>`/dashboard/instalacion/crear/`<br>`.../<id>/editar/` | `test_admin_puede_acceder_crear_instalacion`<br>`test_instalacion_form_crea_sensores_seleccionados` | **Esperado:** 200 OK y persistencia.<br>**Obtenido:** 100% Coincidente. |
-| **RF-02** | **Configuración Flexible de Sensores:** El usuario activa/desactiva las variables que desea vigilar por huerto. | `dashboard/forms.py`<br>`telemetria/models.py` | `/dashboard/instalacion/<id>/editar/` | `test_instalacion_form_crea_sensores_seleccionados`<br>`test_api_rechaza_lectura_de_sensor_desactivado` | **Esperado:** Sensor inactivo no emite ni alerta.<br>**Obtenido:** Cumple estrictamente. |
-| **RF-03** | **Telemetría IoT en Tiempo Real:** Dashboard con gráficas Chart.js alimentadas por polling asíncrono. | `dashboard/views.py`<br>`dashboard/templates/.../detalle.html` | `/dashboard/instalacion/<id>/live/` | `test_iot_device_puede_enviar_medicion` | **Esperado:** Gráficas actualizan cada 5s.<br>**Obtenido:** Fluido y sin recarga. |
-| **RF-04** | **Reglas de Alerta Bipolar (Rojas y Azules):** Disparo automático ante excesos (> máx) y caídas (< mín). | `telemetria/views.py`<br>`telemetria/models.py` | `/api/mediciones/`<br>`/dashboard/instalacion/<id>/regla/crear/` | `test_alerta_roja_generada_al_superar_maximo`<br>`test_alerta_azul_generada_al_caer_bajo_minimo` | **Esperado:** Generación de alerta en BD.<br>**Obtenido:** Alertas Rojas y Azules automáticas. |
-| **RF-05** | **Mitigación de Falsas Alarmas:** Las desconexiones (`estado_conexion=False`) no deben disparar alertas. | `telemetria/views.py` | `/api/mediciones/` | `test_fallo_conexion_no_genera_alerta_falsa` | **Esperado:** Valor 0.00 guardado sin alerta.<br>**Obtenido:** Cero alertas espurias. |
-| **RF-06** | **Seguridad RBAC y Principio de Mínimo Privilegio:** Supervisor solo ve; no edita ni borra. | `telemetria/management/commands/setup_roles.py`<br>`dashboard/views.py` | `/dashboard/instalacion/crear/` | `test_supervisor_no_puede_crear_instalacion`<br>`test_usuario_anonimo_redirigido_al_login` | **Esperado:** 403 Forbidden y 302 Login.<br>**Obtenido:** Cumplimiento total. |
-| **RF-07** | **Validación de Integridad y Bordes:** Bloqueo de lecturas negativas, pH > 14 y humedad > 100%. | `telemetria/models.py`<br>`telemetria/serializers.py`<br>`dashboard/forms.py` | Model Validation & Form Clean | `test_modelo_valor_negativo_rechazado`<br>`test_humedad_porcentaje_mayor_a_100_rechazado`<br>`test_ph_fuera_de_escala_quimica_rechazado` | **Esperado:** ValidationError y Form Error.<br>**Obtenido:** Interceptado con éxito. |
+| **RF-01** | **HU-01 (Admin):** Centralizar y administrar sistemas de cultivo. | **Gestión CRUD de Instalaciones:** Crear, listar, editar y dar de baja huertos. | `dashboard/views.py`<br>`/dashboard/instalacion/crear/` | `test_admin_puede_acceder_crear_instalacion`<br>`test_instalacion_form_crea_sensores_seleccionados` | **Esperado:** 200 OK y persistencia.<br>**Obtenido:** 100% Coincidente. |
+| **RF-02** | **HU-02 (Admin):** Adaptar sensores por huerto sin perder datos. | **Configuración Flexible de Sensores:** Activar/desactivar 8 variables agronómicas. | `dashboard/forms.py`<br>`/dashboard/instalacion/<id>/editar/` | `test_instalacion_form_crea_sensores_seleccionados`<br>`test_api_rechaza_lectura_de_sensor_desactivado` | **Esperado:** Sensor inactivo no emite ni alerta.<br>**Obtenido:** Cumple estrictamente. |
+| **RF-03** | **HU-03 (Cultivador):** Monitorear lecturas en vivo y última comunicación. | **Telemetría IoT en Tiempo Real:** Ingesta API REST y gráficas Chart.js cada 5s. | `dashboard/views.py`<br>`/dashboard/instalacion/<id>/live/` | `test_iot_device_puede_enviar_medicion`<br>`test_api_telemetria_live_devuelve_ultimas_20_en_orden_cronologico`<br>`test_panel_vivo_incluye_ultima_comunicacion` | **Esperado:** Últimas 20 lecturas y hora actualizadas.<br>**Obtenido:** Fluido y en tiempo real. |
+| **RF-04** | **HU-04 (Cultivador):** Recibir avisos ante anomalías de cultivo. | **Reglas de Alerta Bipolar (Rojas y Azules):** Disparo automático (> máx / < mín). | `telemetria/views.py`<br>`/api/mediciones/`<br>`/.../regla/crear/` | `test_alerta_roja_generada_al_superar_maximo`<br>`test_alerta_azul_generada_al_caer_bajo_minimo` | **Esperado:** Generación de alerta en BD.<br>**Obtenido:** Alertas Rojas y Azules automáticas. |
+| **RF-05** | **HU-05 (Sistema):** Manejar pérdida temporal de enlace sin falsas alarmas. | **Mitigación de Falsas Alarmas:** Desconexiones (`estado_conexion=False`) no disparan alerta. | `telemetria/views.py`<br>`/api/mediciones/` | `test_fallo_conexion_no_genera_alerta_falsa` | **Esperado:** Valor 0.00 guardado sin alerta.<br>**Obtenido:** Cero alertas espurias. |
+| **RF-06** | **HU-06 (Seguridad):** Limitar acciones según rol operativo. | **RBAC 4 Roles:** Admin total, Cultivador gestiona reglas, Supervisor solo lectura, IoT ingesta. | `setup_roles.py`<br>`dashboard/views.py` | `test_supervisor_no_puede_crear_instalacion`<br>`test_setup_roles_diferencia_admin_cultivador_supervisor`<br>`test_usuario_anonimo_redirigido_al_login` | **Esperado:** 403 Forbidden y 302 Login.<br>**Obtenido:** Cumplimiento total. |
+| **RF-07** | **HU-07 (Supervisor):** Consultar históricos y estado actual por sensor. | **Histórico y Última Comunicación:** Últimas 100 lecturas con filtro `?sensor=`. | `dashboard/views.py`<br>`/.../<id>/historial/` | `test_historial_muestra_ultima_comunicacion_y_filtra_por_sensor` | **Esperado:** Estados actuales y filtro exacto.<br>**Obtenido:** 100% Coincidente. |
+| **RNF-01** | **Seguridad / Integridad:** Proteger endpoints, secretos y bordes físicos. | **Hardening y Validación Multicapa:** `ALLOWED_HOSTS`, `CORS`, `DEBUG`, pH 0–14, humedad 0–100%. | `AquaPlants/settings.py`<br>`telemetria/models.py`<br>`dashboard/forms.py` | `test_settings_allowed_hosts_sin_comodin`<br>`test_settings_cors_no_permite_todos_los_origenes_por_defecto`<br>`test_ph_fuera_de_escala_quimica_rechazado` | **Esperado:** Cero comodines y rechazo de datos fuera de rango.<br>**Obtenido:** Interceptado con éxito. |
+| **RNF-02** | **Rendimiento / Portabilidad:** Operar en SQLite en la nube bajo carga moderada. | **Persistencia SQLite + Índices:** Consultas `/live/` e historial con 300+ registros < 2s. | `AquaPlants/settings.py`<br>`telemetria/models.py` | `test_sqlite_es_motor_por_defecto`<br>`test_carga_ingesta_y_consulta_sqlite_en_tiempo_acotado` | **Esperado:** SQLite activo por defecto y respuesta rápida.<br>**Obtenido:** Validado bajo carga. |
 
 ---
 
@@ -212,7 +214,7 @@ python manage.py test telemetria -v 2
 ```
 
 ### Resumen del Reporte Oficial:
-* **Total de Pruebas:** 24
+* **Total de Pruebas:** 27
 * **Fallos (Failures):** 0
 * **Errores (Errors):** 0
 * **Tasa de Éxito:** **100% OK**

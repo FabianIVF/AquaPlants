@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Instalacion, Sensor, Medicion
 
 
-class InstalacionSerializer(serializers.ModelSerializer): #serializers.ModelSerializer: Hereda la clase
+class InstalacionSerializer(serializers.ModelSerializer):  # Serializador REST para Instalacion
     class Meta:
         model = Instalacion
         fields = ['id', 'nombre', 'ubicacion', 'activa', 'fecha_creacion']
@@ -50,11 +50,15 @@ class MedicionSerializer(serializers.ModelSerializer):
     # Validación personalizada de seguridad a nivel de API
     def validate_valor(self, value):
         if value < 0:
-            raise serializers.ValidationError("Una medición de sensor no puede tener un valor negativo. Posible manipulación de datos.")
+            raise serializers.ValidationError(
+                "Una medición de sensor no puede tener un valor negativo. Posible manipulación de datos."
+            )
         return value
 
     def validate_sensor(self, sensor):
         # No se aceptan lecturas de sensores desactivados en el dashboard
         if not sensor.activo:
-            raise serializers.ValidationError("Este sensor está desactivado para esta instalación; la lectura fue rechazada.")
+            raise serializers.ValidationError(
+                "Este sensor está desactivado para esta instalación; la lectura fue rechazada."
+            )
         return sensor

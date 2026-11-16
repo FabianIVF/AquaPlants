@@ -1,3 +1,1 @@
-from django.test import TestCase
-
-# Create your tests here.
+# Las pruebas unitarias y de integración están centralizadas en telemetria/tests.py.

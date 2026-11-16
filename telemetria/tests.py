@@ -1,3 +1,4 @@
+import time
 from datetime import timedelta
 from io import StringIO
 from django.test import TestCase, Client
@@ -401,3 +402,59 @@ class DashboardLiveTelemetriaTestCase(TestCase):
         self.assertEqual(valores[0], 6.0)
         self.assertEqual(valores[-1], 25.0)
 
+    def test_panel_vivo_incluye_ultima_comunicacion(self):
+        """La vista detalle en vivo debe incluir el indicador de última comunicación por sensor."""
+        self.client.login(username='admin_live', password='Password123!')
+        resp = self.client.get(f'/dashboard/instalacion/{self.instalacion.pk}/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'id="ultima-ph"')
+        self.assertContains(resp, 'Última com.:')
+
+    def test_historial_muestra_ultima_comunicacion_y_filtra_por_sensor(self):
+        """La vista historial muestra el último estado/hora por sensor y filtra correctamente por ?sensor=."""
+        sensor_hum = Sensor.objects.create(
+            instalacion=self.instalacion,
+            tipo="humedad",
+            modelo_hardware="DHT22 Test",
+            activo=True
+        )
+        Medicion.objects.create(sensor=self.sensor, valor=6.25, estado_conexion=True)
+        Medicion.objects.create(sensor=sensor_hum, valor=71.50, estado_conexion=True)
+
+        self.client.login(username='admin_live', password='Password123!')
+        resp_all = self.client.get(f'/dashboard/instalacion/{self.instalacion.pk}/historial/')
+        self.assertEqual(resp_all.status_code, 200)
+        self.assertEqual(len(resp_all.context['estados_actuales']), 2)
+        self.assertEqual(len(resp_all.context['historico']), 2)
+
+        resp_ph = self.client.get(f'/dashboard/instalacion/{self.instalacion.pk}/historial/?sensor=ph')
+        self.assertEqual(resp_ph.status_code, 200)
+        historico_ph = list(resp_ph.context['historico'])
+        self.assertEqual(len(historico_ph), 1)
+        self.assertEqual(historico_ph[0].sensor.tipo, 'ph')
+
+    def test_carga_ingesta_y_consulta_sqlite_en_tiempo_acotado(self):
+        """Prueba de carga (ES2/ES3): ingesta masiva de 300 lecturas y respuesta de /live/ e historial < 2s."""
+        base = timezone.now() - timedelta(minutes=30)
+        lote = [
+            Medicion(sensor=self.sensor, valor=round(5.5 + (i % 10) * 0.1, 2), estado_conexion=True)
+            for i in range(300)
+        ]
+        creadas = Medicion.objects.bulk_create(lote)
+        for idx, med in enumerate(creadas):
+            med.timestamp = base + timedelta(seconds=idx * 5)
+        Medicion.objects.bulk_update(creadas, ['timestamp'])
+
+        self.assertEqual(Medicion.objects.filter(sensor=self.sensor).count(), 300)
+
+        self.client.login(username='admin_live', password='Password123!')
+        inicio = time.perf_counter()
+        resp_live = self.client.get(f'/dashboard/instalacion/{self.instalacion.pk}/live/')
+        resp_hist = self.client.get(f'/dashboard/instalacion/{self.instalacion.pk}/historial/')
+        duracion = time.perf_counter() - inicio
+
+        self.assertEqual(resp_live.status_code, 200)
+        self.assertEqual(len(resp_live.json()['sensores']['ph']['mediciones']), 20)
+        self.assertEqual(resp_hist.status_code, 200)
+        self.assertEqual(len(resp_hist.context['historico']), 100)
+        self.assertLess(duracion, 2.0)

@@ -43,15 +43,33 @@ except Exception:
 #   limite  : límites físicos absolutos (nunca se envía fuera de esto)
 # ============================================================
 PERFILES = {
-    "temperatura_agua": {"normal": (18.0, 24.0),   "anomalo": (27.0, 32.0),     "paso": 0.3,  "limite": (0, 50),    "icono": "🌡️💧"},
-    "temperatura_aire": {"normal": (18.0, 28.0),   "anomalo": (33.0, 40.0),     "paso": 0.5,  "limite": (0, 60),    "icono": "🌡️💨"},
-    "temperatura":      {"normal": (18.0, 28.0),   "anomalo": (33.0, 40.0),     "paso": 0.5,  "limite": (0, 60),    "icono": "🌡️"},
-    "humedad":          {"normal": (50.0, 80.0),   "anomalo": (20.0, 35.0),     "paso": 1.5,  "limite": (0, 100),   "icono": "💧"},
-    "ph":               {"normal": (5.5, 6.5),     "anomalo": (7.5, 8.5),       "paso": 0.05, "limite": (0, 14),    "icono": "🧪"},
-    "caudal":           {"normal": (1.5, 4.0),     "anomalo": (0.0, 0.4),       "paso": 0.2,  "limite": (0, 50),    "icono": "🌊"},
-    "nivel_estanque":   {"normal": (40.0, 95.0),   "anomalo": (5.0, 15.0),      "paso": 0.8,  "limite": (0, 100),   "icono": "🪣"},
-    "co2":              {"normal": (400.0, 1200.0),"anomalo": (1800.0, 2500.0), "paso": 25.0, "limite": (0, 5000),  "icono": "🫧"},
-    "fotoperiodo":      {"normal": (12.0, 18.0),   "anomalo": (20.0, 24.0),     "paso": 0.25, "limite": (0, 24),    "icono": "☀️"},
+    "temperatura_agua": {
+        "normal": (18.0, 24.0), "anomalo": (27.0, 32.0), "paso": 0.3, "limite": (0, 50), "icono": "🌡️💧",
+    },
+    "temperatura_aire": {
+        "normal": (18.0, 28.0), "anomalo": (33.0, 40.0), "paso": 0.5, "limite": (0, 60), "icono": "🌡️💨",
+    },
+    "temperatura": {
+        "normal": (18.0, 28.0), "anomalo": (33.0, 40.0), "paso": 0.5, "limite": (0, 60), "icono": "🌡️",
+    },
+    "humedad": {
+        "normal": (50.0, 80.0), "anomalo": (20.0, 35.0), "paso": 1.5, "limite": (0, 100), "icono": "💧",
+    },
+    "ph": {
+        "normal": (5.5, 6.5), "anomalo": (7.5, 8.5), "paso": 0.05, "limite": (0, 14), "icono": "🧪",
+    },
+    "caudal": {
+        "normal": (1.5, 4.0), "anomalo": (0.0, 0.4), "paso": 0.2, "limite": (0, 50), "icono": "🌊",
+    },
+    "nivel_estanque": {
+        "normal": (40.0, 95.0), "anomalo": (5.0, 15.0), "paso": 0.8, "limite": (0, 100), "icono": "🪣",
+    },
+    "co2": {
+        "normal": (400.0, 1200.0), "anomalo": (1800.0, 2500.0), "paso": 25.0, "limite": (0, 5000), "icono": "🫧",
+    },
+    "fotoperiodo": {
+        "normal": (12.0, 18.0), "anomalo": (20.0, 24.0), "paso": 0.25, "limite": (0, 24), "icono": "☀️",
+    },
 }
 PERFIL_GENERICO = {"normal": (0.0, 10.0), "anomalo": (50.0, 60.0), "paso": 0.5, "limite": (0, 1000), "icono": "📡"}
 
@@ -181,7 +199,10 @@ class SimuladorAquaBrain:
         print("=" * 62)
         print(f"  Servidor  : {self.base}")
         print(f"  Dispositivo: {self.args.usuario}")
-        print(f"  Intervalo : {self.args.intervalo}s | Anomalías: {self.args.anomalias:.0%} | Fallos: {self.args.fallos:.0%}")
+        print(
+            f"  Intervalo : {self.args.intervalo}s | "
+            f"Anomalías: {self.args.anomalias:.0%} | Fallos: {self.args.fallos:.0%}"
+        )
         print("  Presiona Ctrl+C para detener.\n")
 
         try:

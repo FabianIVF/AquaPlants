@@ -42,6 +42,7 @@
                     <span id="unidad-{{ sensor.tipo }}" class="metric-unit">{{ sensor.get_unidad }}</span>
                 </div>
                 <span id="estado-{{ sensor.tipo }}" class="status status-off mt-2">Esperando</span>
+                <div id="ultima-{{ sensor.tipo }}" class="t-muted num mt-2" style="font-size:0.74rem;">Última com.: &mdash;</div>
             </div>
         </div>
         {% empty %}
@@ -290,9 +291,13 @@ function actualizarTarjeta(tipo, mediciones) {
 
     const elValor  = document.getElementById(`valor-${tipo}`);
     const elEstado = document.getElementById(`estado-${tipo}`);
+    const elUltima = document.getElementById(`ultima-${tipo}`);
     if (!elValor) return;
 
     elValor.textContent = ultima.valor;
+    if (elUltima) {
+        elUltima.textContent = `Última com.: ${ultima.timestamp}`;
+    }
 
     if (elEstado) {
         if (ultima.estado_conexion) {

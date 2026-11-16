@@ -3,7 +3,7 @@
 **Asignatura / Evaluación:** ES3 — Implementación de la Solución de Software (INACAP)  
 **Estudiantes:** Fabian Vidal y Pablo Cabezas  
 **Fecha de Ejecución:** Noviembre 2026  
-**Resultado Global:** `24/24 pruebas exitosas (100% OK)`
+**Resultado Global:** `27/27 pruebas exitosas (100% OK)`
 
 ---
 
@@ -19,7 +19,7 @@ La suite de pruebas automatizadas fue desarrollada en `telemetria/tests.py` medi
 | **`ReglasDeAlertaTestCase`** | Disparo automático de Alerta Roja por exceso, disparo de Alerta Azul por caída, ausencia de alertas en rango óptimo, supresión de falsas alertas ante fallo de conexión. | Lógica de Negocio |
 | **`FormulariosDashboardTestCase`** | Validación estricta de porcentajes (> 100% rechazado), escala química de pH (> 14 rechazado), coherencia de límites (mínimo $\ge$ máximo rechazado), persistencia selectiva de sensores. | Validación de Entrada |
 | **`SeguridadPunto6TestCase`** | Control estricto de `ALLOWED_HOSTS` sin comodines, protección CORS selectiva y aprovisionamiento automático RBAC de `iot_device`. | Seguridad / Auditoría |
-| **`DashboardLiveTelemetriaTestCase`** | Verificación de `SQLite3` como motor por defecto y retorno cronológico de las últimas 20 mediciones más recientes en `/live/`. | Telemetría en Vivo |
+| **`DashboardLiveTelemetriaTestCase`** | Verificación de `SQLite3` como motor por defecto, retorno cronológico de últimas 20 mediciones en `/live/`, indicador de última comunicación, vista histórico con filtro y prueba de carga con 300 mediciones. | Telemetría / Rendimiento |
 
 ---
 
@@ -33,7 +33,7 @@ python manage.py test telemetria -v 2
 ### Salida Consignada del Protocolo:
 ```text
 Creating test database for alias 'default' ('test_aquaplants_db')...
-Found 24 test(s).
+Found 27 test(s).
 Operations to perform:
   Synchronize unmigrated apps: corsheaders, messages, rest_framework, staticfiles
   Apply all migrations: admin, auth, contenttypes, sessions, telemetria
@@ -66,7 +66,7 @@ test_supervisor_no_puede_crear_instalacion ... ok
 test_usuario_anonimo_redirigido_al_login ... ok
 
 ----------------------------------------------------------------------
-Ran 24 tests in 18.861s
+Ran 27 tests in 22.283s
 
 OK
 Destroying test database for alias 'default' ('test_aquaplants_db')...

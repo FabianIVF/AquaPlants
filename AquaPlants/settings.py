@@ -40,10 +40,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    #apps
+    # apps
     'telemetria',
     'dashboard',
-    #apps de terceros
+    # apps de terceros
     'rest_framework',
     'corsheaders',
 ]

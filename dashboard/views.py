@@ -25,7 +25,7 @@ def user_login(request):
                 return redirect('inicio_dashboard')
     else:
         form = AuthenticationForm()
-    
+
     return render(request, 'dashboard/login.html', {'form': form})
 
 
@@ -50,7 +50,7 @@ def detalle_instalacion(request, instalacion_id):
     sensores = Sensor.objects.filter(instalacion=instalacion, activo=True)
     mediciones = Medicion.objects.filter(sensor__in=sensores).order_by('-timestamp')[:20]
     reglas = ReglaAlerta.objects.filter(sensor__in=sensores).select_related('sensor')
-    
+
     contexto = {
         'instalacion': instalacion,
         'sensores': sensores,
