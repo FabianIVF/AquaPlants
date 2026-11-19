@@ -18,6 +18,11 @@ urlpatterns = [
     path('usuarios/<int:user_id>/editar/', views.editar_usuario, name='editar_usuario'),
     path('usuarios/<int:user_id>/eliminar/', views.eliminar_usuario, name='eliminar_usuario'),
 
+    # CRUD Invernaderos (Agrupación física de torres/instalaciones)
+    path('invernadero/crear/', views.crear_invernadero, name='crear_invernadero'),
+    path('invernadero/<str:invernadero_id>/editar/', views.editar_invernadero, name='editar_invernadero'),
+    path('invernadero/<str:invernadero_id>/eliminar/', views.eliminar_invernadero, name='eliminar_invernadero'),
+
     # CRUD Instalaciones
     path('instalacion/crear/', views.crear_instalacion, name='crear_instalacion'),
     path('instalacion/<str:instalacion_id>/', views.detalle_instalacion, name='detalle_instalacion'),

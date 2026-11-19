@@ -2,7 +2,7 @@ import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, Permission, User
 from django.contrib.contenttypes.models import ContentType
-from telemetria.models import Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
+from telemetria.models import Invernadero, Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
 
 
 class Command(BaseCommand):  # Convierte este script en una herramienta de consola segura
@@ -21,6 +21,7 @@ class Command(BaseCommand):  # Convierte este script en una herramienta de conso
                 self.stdout.write(self.style.WARNING(f'El rol {rol} ya existía.'))
 
         # 2. Obtener las referencias de todos los modelos del dominio y usuarios en Django
+        ct_invernadero = ContentType.objects.get_for_model(Invernadero)
         ct_instalacion = ContentType.objects.get_for_model(Instalacion)
         ct_planta = ContentType.objects.get_for_model(Planta)
         ct_sensor = ContentType.objects.get_for_model(Sensor)
@@ -29,7 +30,7 @@ class Command(BaseCommand):  # Convierte este script en una herramienta de conso
         ct_alerta = ContentType.objects.get_for_model(AlertaGenerada)
         ct_user = ContentType.objects.get_for_model(User)
 
-        todos_modelos = [ct_instalacion, ct_planta, ct_sensor, ct_medicion, ct_regla, ct_alerta]
+        todos_modelos = [ct_invernadero, ct_instalacion, ct_planta, ct_sensor, ct_medicion, ct_regla, ct_alerta]
 
         # 3a. Administrador: Acceso total a instalaciones, plantas, sensores, mediciones, reglas, alertas y usuarios
         grupo_admin = Group.objects.get(name='Administrador')

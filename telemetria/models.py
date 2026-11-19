@@ -132,9 +132,32 @@ SENSOR_CATALOGO = {
 }
 
 
+class Invernadero(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nombre = models.CharField(max_length=100, unique=True)
+    sector = models.CharField(max_length=150, blank=True)
+    descripcion = models.TextField(blank=True)
+    activa = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
 class Instalacion(models.Model):
     # Se reemplaza el ID secuencial clásico por un UUID
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    invernadero = models.ForeignKey(
+        Invernadero,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='instalaciones',
+        help_text="Invernadero o nave física a la que pertenece esta torre/maceta",
+    )
     nombre = models.CharField(max_length=100, unique=True)
     ubicacion = models.CharField(max_length=200)
     activa = models.BooleanField(default=True)

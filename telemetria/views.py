@@ -1,12 +1,24 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
-from .models import Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
-from .serializers import InstalacionSerializer, PlantaSerializer, SensorSerializer, MedicionSerializer
+from .models import Invernadero, Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
+from .serializers import (
+    InvernaderoSerializer,
+    InstalacionSerializer,
+    PlantaSerializer,
+    SensorSerializer,
+    MedicionSerializer,
+)
+
+
+class InvernaderoViewSet(viewsets.ModelViewSet):
+    queryset = Invernadero.objects.all()
+    serializer_class = InvernaderoSerializer
+    permission_classes = [IsAuthenticated, DjangoModelPermissions]
 
 
 class InstalacionViewSet(viewsets.ModelViewSet):
-    queryset = Instalacion.objects.all()
+    queryset = Instalacion.objects.select_related('invernadero').all()
     serializer_class = InstalacionSerializer
     # Políticas de seguridad aplicadas a la ruta
     permission_classes = [IsAuthenticated, DjangoModelPermissions]

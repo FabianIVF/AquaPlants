@@ -1,6 +1,10 @@
 <div class="inst-header">
     <div class="inst-crumb">
         <a href="{% url 'inicio_dashboard' %}"><i class="bi bi-arrow-left me-1"></i>Monitor de sistemas</a>
+        {% if instalacion.invernadero %}
+        <span class="mx-1">/</span>
+        <a href="{% url 'inicio_dashboard' %}?invernadero={{ instalacion.invernadero.pk }}">{{ instalacion.invernadero.nombre }}</a>
+        {% endif %}
         <span class="mx-1">/</span>
         <span>{{ instalacion.nombre }}</span>
     </div>

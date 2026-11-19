@@ -1,10 +1,17 @@
 from django.contrib import admin
-from .models import Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
+from .models import Invernadero, Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
+
+
+@admin.register(Invernadero)
+class InvernaderoAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'sector', 'activa', 'fecha_creacion')
+    search_fields = ('nombre', 'sector')
 
 
 @admin.register(Instalacion)  # Decorador para hacer pública la tabla dentro del panel
 class InstalacionAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'ubicacion', 'activa', 'fecha_creacion')  # Columnas visibles en admin
+    list_display = ('nombre', 'invernadero', 'ubicacion', 'activa', 'fecha_creacion')  # Columnas visibles
+    list_filter = ('invernadero', 'activa')
     search_fields = ('nombre', 'ubicacion')  # Agregan barras de búsqueda
 
 

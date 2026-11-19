@@ -1,30 +1,35 @@
 {% extends "dashboard/base.html" %}
 
-{% block title %}Dashboard - AquaPlants{% endblock %}
+{% block title %}Monitor de Sistemas — AquaPlants{% endblock %}
 
 {% block content %}
     <div class="page-head">
         <div>
             <h1>Monitor de sistemas</h1>
-            <p>Estado general de instalaciones hidropónicas, plantas monitoreadas y alertas.</p>
+            <p>Invernaderos, macetas verticales, plantas monitoreadas y estado en tiempo real.</p>
         </div>
 
         <div class="page-actions">
+            {% if perms.telemetria.add_invernadero %}
+            <a href="{% url 'crear_invernadero' %}" class="btn btn-ghost btn-sm">
+                <i class="bi bi-house-add"></i>Nuevo invernadero
+            </a>
+            {% endif %}
             {% if perms.telemetria.add_instalacion %}
             <a href="{% url 'crear_instalacion' %}" class="btn btn-primary-ap btn-sm">
-                <i class="bi bi-plus-lg"></i>Nueva instalación
+                <i class="bi bi-plus-lg"></i>Nueva torre / maceta
             </a>
             {% endif %}
         </div>
     </div>
 
-    <!-- Resumen ejecutivo para el cultivador -->
+    <!-- Resumen ejecutivo -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
             <div class="panel stat">
-                <div class="stat-label">Instalaciones</div>
-                <div class="stat-value">{{ total_instalaciones }}</div>
-                <div class="stat-note">{% if es_admin %}Acceso total{% else %}Asignadas a tu cuenta{% endif %}</div>
+                <div class="stat-label">Invernaderos</div>
+                <div class="stat-value">{{ total_invernaderos }}</div>
+                <div class="stat-note">{{ total_instalaciones }} torre(s) / maceta(s)</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
@@ -42,111 +47,146 @@
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="panel stat">
+            <a href="{% url 'lista_alertas' %}" class="panel stat d-block" style="color:inherit;">
                 <div class="stat-label">Alertas activas</div>
                 <div class="stat-value {% if num_alertas > 0 %}t-danger{% endif %}">{{ num_alertas }}</div>
-                <div class="stat-note">Pendientes de revisión</div>
-            </div>
+                <div class="stat-note">Ir al centro de alertas &rarr;</div>
+            </a>
         </div>
     </div>
 
-    <!-- Tarjetas de instalaciones -->
-    <div class="row g-3">
-        {% for item in tarjetas %}
-        {% with instalacion=item.instalacion res=item.resumen %}
-        <div class="col-md-6 col-xl-4">
-            <div class="panel site-card">
-                <div class="panel-body">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                        <div>
-                            <h2 class="panel-title" style="font-size:1rem;">{{ instalacion.nombre }}</h2>
-                            <div class="t-muted" style="font-size:0.78rem;">{{ instalacion.ubicacion }}</div>
-                        </div>
-                        <span class="status {{ res.estado_css }}">{{ res.estado_label }}</span>
-                    </div>
-
-                    <div class="row g-2 my-3 text-center">
-                        <div class="col-4">
-                            <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                <div class="stat-label">Plantas</div>
-                                <div class="fw-semibold num" style="font-size:1.1rem;">{{ item.num_plantas }}</div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                <div class="stat-label">En rango</div>
-                                <div class="fw-semibold num" style="font-size:1.1rem;">
-                                    {% if res.porcentaje_en_rango is not None %}{{ res.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                <div class="stat-label">Alertas</div>
-                                <div class="fw-semibold num {% if item.num_alertas > 0 %}t-danger{% endif %}" style="font-size:1.1rem;">{{ item.num_alertas }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {% if item.plantas_riesgo > 0 %}
-                    <div class="notice notice-warn mb-3" style="font-size:0.78rem;">
-                        <i class="bi bi-exclamation-triangle me-1"></i>{{ item.plantas_riesgo }} planta(s) requieren atención.
-                    </div>
-                    {% else %}
-                    <div class="t-muted mb-3" style="font-size:0.78rem;">
-                        {{ res.recomendaciones.0 }}
-                    </div>
-                    {% endif %}
-
-                    <div class="d-flex flex-column gap-2 mt-auto">
-                        <a href="{% url 'detalle_instalacion' instalacion.pk %}" class="btn btn-primary-ap btn-sm w-100">
-                            <i class="bi bi-activity"></i>Abrir panel en vivo
-                        </a>
-                        <div class="d-flex gap-2">
-                            <a href="{% url 'lista_plantas' instalacion.pk %}" class="btn btn-ghost btn-sm flex-fill">
-                                <i class="bi bi-flower1"></i>Plantas ({{ item.num_plantas }})
-                            </a>
-                            <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm flex-fill">
-                                <i class="bi bi-clock-history"></i>Historial
-                            </a>
-                        </div>
-                        {% if perms.telemetria.change_instalacion or perms.telemetria.delete_instalacion %}
-                        <div class="d-flex gap-2">
-                            {% if perms.telemetria.change_instalacion %}
-                            <a href="{% url 'editar_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm flex-fill">
-                                <i class="bi bi-pencil"></i>Editar
-                            </a>
-                            {% endif %}
-                            {% if perms.telemetria.delete_instalacion %}
-                            <a href="{% url 'eliminar_instalacion' instalacion.pk %}" class="btn btn-ghost-danger btn-sm flex-fill">
-                                <i class="bi bi-trash3"></i>Eliminar
-                            </a>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endwith %}
-
-        {% empty %}
-        <div class="col-12">
-            <div class="panel">
-                <div class="panel-body text-center py-5">
-                    <p class="t-muted mb-3">
-                        {% if es_admin %}
-                            No hay instalaciones de cultivo registradas.
-                        {% else %}
-                            Tu cuenta aún no tiene instalaciones asignadas. Solicita acceso a un Administrador.
-                        {% endif %}
-                    </p>
-                    {% if perms.telemetria.add_instalacion %}
-                    <a href="{% url 'crear_instalacion' %}" class="btn btn-primary-ap btn-sm"><i class="bi bi-plus-lg"></i>Crear la primera instalación</a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+    <!-- Filtro rápido por invernadero -->
+    {% if invernaderos_filtro %}
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+        <span class="t-muted" style="font-size:0.8rem;"><i class="bi bi-funnel me-1"></i>Ver:</span>
+        <a href="{% url 'inicio_dashboard' %}" class="btn btn-sm {% if not filtro_inv %}btn-primary-ap{% else %}btn-ghost{% endif %}">
+            Todos
+        </a>
+        {% for inv in invernaderos_filtro %}
+        <a href="{% url 'inicio_dashboard' %}?invernadero={{ inv.pk }}" class="btn btn-sm {% if filtro_inv == inv.pk|stringformat:'s' %}btn-primary-ap{% else %}btn-ghost{% endif %}">
+            <i class="bi bi-buildings me-1"></i>{{ inv.nombre }}
+        </a>
         {% endfor %}
+        {% if tiene_sin_asignar %}
+        <a href="{% url 'inicio_dashboard' %}?invernadero=sin_asignar" class="btn btn-sm {% if filtro_inv == 'sin_asignar' %}btn-primary-ap{% else %}btn-ghost{% endif %}">
+            Sin invernadero
+        </a>
+        {% endif %}
     </div>
+    {% endif %}
+
+    <!-- Contenedores por Invernadero -->
+    {% for grupo in grupos_invernaderos %}
+    {% with inv=grupo.invernadero %}
+    <section class="panel mb-4" style="border-left: 3px solid {% if grupo.estado == 'critico' %}var(--ap-danger){% elif grupo.estado == 'atencion' %}var(--ap-warning){% elif grupo.estado == 'optimo' %}var(--ap-accent){% else %}var(--ap-border-strong){% endif %};">
+        <div class="panel-head">
+            <div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <h2 class="panel-title" style="font-size:1.05rem;">
+                        <i class="bi bi-buildings me-1 t-accent"></i>{{ inv.nombre }}
+                    </h2>
+                    <span class="status {{ grupo.estado_css }}">{{ grupo.estado_label }}</span>
+                    <span class="tag">{{ grupo.num_torres }} torre(s)</span>
+                    <span class="tag">{{ grupo.num_plantas }} planta(s)</span>
+                    {% if grupo.num_alertas > 0 %}
+                    <span class="status status-err" style="padding:0.18rem 0.5rem;">{{ grupo.num_alertas }} alerta(s)</span>
+                    {% endif %}
+                </div>
+                {% if inv.sector or inv.descripcion %}
+                <p class="panel-sub">
+                    {% if inv.sector %}{{ inv.sector }}{% endif %}
+                    {% if inv.sector and inv.descripcion %} &middot; {% endif %}
+                    {% if inv.descripcion %}{{ inv.descripcion }}{% endif %}
+                </p>
+                {% endif %}
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                {% if perms.telemetria.add_instalacion %}
+                <a href="{% url 'crear_instalacion' %}?invernadero={{ inv.pk }}" class="btn btn-primary-ap btn-sm">
+                    <i class="bi bi-plus-lg"></i>Agregar torre aquí
+                </a>
+                {% endif %}
+                {% if perms.telemetria.change_invernadero %}
+                <a href="{% url 'editar_invernadero' inv.pk %}" class="btn btn-ghost btn-sm" title="Editar invernadero">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                {% endif %}
+                {% if perms.telemetria.delete_invernadero %}
+                <a href="{% url 'eliminar_invernadero' inv.pk %}" class="btn btn-ghost-danger btn-sm" title="Eliminar invernadero">
+                    <i class="bi bi-trash3"></i>
+                </a>
+                {% endif %}
+                <button class="btn btn-ghost btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#inv-{{ inv.pk }}" aria-expanded="true" title="Mostrar / ocultar torres">
+                    <i class="bi bi-chevron-expand"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="collapse show" id="inv-{{ inv.pk }}">
+            <div class="panel-body">
+                {% if grupo.tarjetas %}
+                <div class="row g-3">
+                    {% for item in grupo.tarjetas %}
+                        {% include "dashboard/_tarjeta_instalacion.html" %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 t-muted">
+                    Este invernadero aún no tiene torres o macetas verticales asignadas.
+                    {% if perms.telemetria.add_instalacion %}
+                    <div class="mt-2">
+                        <a href="{% url 'crear_instalacion' %}?invernadero={{ inv.pk }}" class="btn btn-ghost btn-sm">
+                            <i class="bi bi-plus-lg"></i>Agregar la primera torre
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+    {% endwith %}
+    {% endfor %}
+
+    <!-- Torres / Macetas sin invernadero asignado (retrocompatibilidad) -->
+    {% if tarjetas_sin_invernadero %}
+    <section class="panel mb-4">
+        {% if grupos_invernaderos %}
+        <div class="panel-head">
+            <div>
+                <h2 class="panel-title" style="font-size:1rem;">Torres independientes (sin invernadero asignado)</h2>
+                <p class="panel-sub">Puedes asignarlas a un invernadero desde Editar.</p>
+            </div>
+        </div>
+        {% endif %}
+        <div class="panel-body">
+            <div class="row g-3">
+                {% for item in tarjetas_sin_invernadero %}
+                    {% include "dashboard/_tarjeta_instalacion.html" %}
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if not grupos_invernaderos and not tarjetas_sin_invernadero %}
+    <div class="panel">
+        <div class="panel-body text-center py-5">
+            <p class="t-muted mb-3">
+                {% if es_admin %}
+                    No hay invernaderos ni torres registradas todavía.
+                {% else %}
+                    Tu cuenta aún no tiene instalaciones asignadas. Solicita acceso a un Administrador.
+                {% endif %}
+            </p>
+            {% if perms.telemetria.add_invernadero %}
+            <a href="{% url 'crear_invernadero' %}" class="btn btn-ghost btn-sm me-2"><i class="bi bi-house-add"></i>Crear invernadero</a>
+            {% endif %}
+            {% if perms.telemetria.add_instalacion %}
+            <a href="{% url 'crear_instalacion' %}" class="btn btn-primary-ap btn-sm"><i class="bi bi-plus-lg"></i>Crear torre / maceta</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 {% endblock %}

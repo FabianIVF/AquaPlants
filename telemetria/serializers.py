@@ -1,11 +1,20 @@
 from rest_framework import serializers
-from .models import Instalacion, Planta, Sensor, Medicion
+from .models import Invernadero, Instalacion, Planta, Sensor, Medicion
+
+
+class InvernaderoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invernadero
+        fields = ['id', 'nombre', 'sector', 'descripcion', 'activa', 'fecha_creacion']
+        read_only_fields = ['id', 'fecha_creacion']
 
 
 class InstalacionSerializer(serializers.ModelSerializer):  # Serializador REST para Instalacion
+    invernadero_nombre = serializers.CharField(source='invernadero.nombre', read_only=True, default=None)
+
     class Meta:
         model = Instalacion
-        fields = ['id', 'nombre', 'ubicacion', 'activa', 'fecha_creacion']
+        fields = ['id', 'invernadero', 'invernadero_nombre', 'nombre', 'ubicacion', 'activa', 'fecha_creacion']
         read_only_fields = ['id', 'fecha_creacion']
 
 

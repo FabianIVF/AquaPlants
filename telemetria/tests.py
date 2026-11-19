@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 from rest_framework import status
 
-from telemetria.models import Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
+from telemetria.models import Invernadero, Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
 from dashboard.analytics import resumen_planta, resumen_sensores
 from dashboard.forms import ReglaAlertaForm, InstalacionForm
 
@@ -722,3 +722,57 @@ class AlertasCentroTestCase(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.alerta_roja.refresh_from_db()
         self.assertTrue(self.alerta_roja.leida)
+
+
+class InvernaderosMonitorTestCase(TestCase):
+    """
+    Pruebas del módulo de Invernaderos, agrupación visual de torres en el Monitor y permisos.
+    """
+    def setUp(self):
+        call_command('setup_roles', stdout=StringIO())
+        self.admin = User.objects.create_user(username='admin_inv', password='Pass1234!')
+        self.admin.groups.add(Group.objects.get(name='Administrador'))
+        self.encargado = User.objects.create_user(username='enc_inv', password='Pass1234!')
+        self.encargado.groups.add(Group.objects.get(name='Encargado de cultivo'))
+        self.client = Client()
+
+    def test_admin_crea_invernadero_y_agrupa_torres_en_monitor(self):
+        """Admin crea un invernadero y una torre vinculada; el monitor los agrupa visualmente."""
+        self.client.login(username='admin_inv', password='Pass1234!')
+        resp_inv = self.client.post('/dashboard/invernadero/crear/', {
+            'nombre': 'Invernadero Norte',
+            'sector': 'Zona A',
+            'descripcion': 'Nave principal',
+            'activa': True,
+        })
+        self.assertEqual(resp_inv.status_code, 302)
+        inv = Invernadero.objects.get(nombre='Invernadero Norte')
+
+        # Preselección en GET ?invernadero=<id> y creación de torre vinculada
+        resp_get = self.client.get(f'/dashboard/instalacion/crear/?invernadero={inv.pk}')
+        self.assertEqual(resp_get.status_code, 200)
+        self.assertEqual(str(resp_get.context['form'].initial.get('invernadero')), str(inv.pk))
+
+        Instalacion.objects.create(invernadero=inv, nombre='Torre N1', ubicacion='Fila 1')
+        resp_mon = self.client.get('/dashboard/')
+        self.assertEqual(resp_mon.status_code, 200)
+        grupos = resp_mon.context['grupos_invernaderos']
+        self.assertEqual(len(grupos), 1)
+        self.assertEqual(grupos[0]['invernadero'].nombre, 'Invernadero Norte')
+        self.assertEqual(grupos[0]['num_torres'], 1)
+
+    def test_encargado_solo_ve_su_invernadero_y_no_puede_crear_invernadero(self):
+        """Encargado de cultivo recibe 403 al crear invernadero y solo ve el de sus torres."""
+        inv_norte = Invernadero.objects.create(nombre='Invernadero Norte', sector='A')
+        inv_sur = Invernadero.objects.create(nombre='Invernadero Sur', sector='B')
+        torre_a = Instalacion.objects.create(invernadero=inv_norte, nombre='Torre A', ubicacion='F1')
+        Instalacion.objects.create(invernadero=inv_sur, nombre='Torre B', ubicacion='F2')
+        torre_a.encargados.add(self.encargado)
+
+        self.client.login(username='enc_inv', password='Pass1234!')
+        self.assertEqual(self.client.get('/dashboard/invernadero/crear/').status_code, 403)
+
+        resp_mon = self.client.get('/dashboard/')
+        self.assertEqual(resp_mon.status_code, 200)
+        nombres_inv = [g['invernadero'].nombre for g in resp_mon.context['grupos_invernaderos']]
+        self.assertEqual(nombres_inv, ['Invernadero Norte'])

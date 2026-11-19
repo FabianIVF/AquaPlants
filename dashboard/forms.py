@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import Group, User
-from telemetria.models import Instalacion, Planta, ReglaAlerta, Sensor, SENSOR_CATALOGO
+from telemetria.models import Invernadero, Instalacion, Planta, ReglaAlerta, Sensor, SENSOR_CATALOGO
 
 # Opciones de sensores configurables para los huertos
 OPCIONES_SENSORES_CHOICES = [
@@ -23,6 +23,24 @@ SENSORES_RECOMENDADOS_DEFAULT = [
 ]
 
 
+class InvernaderoForm(forms.ModelForm):
+    class Meta:
+        model = Invernadero
+        fields = ['nombre', 'sector', 'descripcion', 'activa']
+        labels = {
+            'nombre': 'Nombre del Invernadero',
+            'sector': 'Sector / Nave física',
+            'descripcion': 'Descripción del recinto',
+            'activa': 'Invernadero operativo',
+        }
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Invernadero Norte'}),
+            'sector': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Zona A · Parcela 2'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'activa': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
 class InstalacionForm(forms.ModelForm):
     sensores_seleccionados = forms.MultipleChoiceField(
         choices=OPCIONES_SENSORES_CHOICES,
@@ -37,20 +55,22 @@ class InstalacionForm(forms.ModelForm):
 
     class Meta:
         model = Instalacion
-        fields = ['nombre', 'ubicacion', 'activa']
+        fields = ['invernadero', 'nombre', 'ubicacion', 'activa']
         labels = {
-            'nombre': 'Nombre del Sistema / Instalación',
-            'ubicacion': 'Ubicación física',
+            'invernadero': 'Invernadero al que pertenece',
+            'nombre': 'Nombre de la Torre / Maceta Vertical',
+            'ubicacion': 'Ubicación interna o fila',
             'activa': 'Estado operativo (Activa)',
         }
         widgets = {
+            'invernadero': forms.Select(attrs={'class': 'form-select'}),
             'nombre': forms.TextInput(attrs={
                 'class': 'form-control bg-dark text-light border-secondary',
-                'placeholder': 'Ej. Huerto Vertical Torre B',
+                'placeholder': 'Ej. Torre Vertical B1',
             }),
             'ubicacion': forms.TextInput(attrs={
                 'class': 'form-control bg-dark text-light border-secondary',
-                'placeholder': 'Ej. Invernadero Hidropónico - Sector 3',
+                'placeholder': 'Ej. Fila 2 · Pasillo Central',
             }),
             'activa': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',
@@ -59,6 +79,8 @@ class InstalacionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['invernadero'].required = False
+        self.fields['invernadero'].empty_label = "--- Sin invernadero asignado (independiente) ---"
         if self.instance and self.instance.pk:
             # Si estamos editando, cargar los sensores ambientales actualmente activos
             activos = list(

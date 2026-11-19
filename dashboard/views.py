@@ -10,9 +10,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from telemetria.models import AlertaGenerada, Instalacion, Medicion, Planta, ReglaAlerta, Sensor
-from .analytics import resumen_planta, resumen_sensores
-from .forms import InstalacionForm, PlantaForm, ReglaAlertaForm, UsuarioForm
+from telemetria.models import AlertaGenerada, Instalacion, Invernadero, Medicion, Planta, ReglaAlerta, Sensor
+from .analytics import ESTADO_META, resumen_planta, resumen_sensores
+from .forms import InstalacionForm, InvernaderoForm, PlantaForm, ReglaAlertaForm, UsuarioForm
 
 
 # ============================================================
@@ -29,10 +29,57 @@ def _requiere_admin(user):
 
 
 def _instalaciones_autorizadas(user):
-    qs = Instalacion.objects.all().order_by('-fecha_creacion')
+    qs = Instalacion.objects.select_related('invernadero').all().order_by('-fecha_creacion')
     if _es_admin(user):
         return qs
     return qs.filter(encargados=user)
+
+
+def _construir_tarjeta_instalacion(inst):
+    sensores_amb = inst.sensores.filter(activo=True, planta__isnull=True)
+    resumen_amb = resumen_sensores(sensores_amb)
+    plantas = list(inst.plantas.filter(activa=True))
+
+    riesgo_inst = 0
+    for p in plantas:
+        res_p = resumen_planta(p)
+        if res_p['estado'] in ('atencion', 'critico'):
+            riesgo_inst += 1
+
+    alertas_inst = AlertaGenerada.objects.filter(
+        regla__sensor__instalacion=inst, leida=False
+    ).count()
+
+    return {
+        'instalacion': inst,
+        'resumen': resumen_amb,
+        'num_plantas': len(plantas),
+        'plantas_riesgo': riesgo_inst,
+        'num_alertas': alertas_inst,
+    }
+
+
+def _ordenar_tarjetas(tarjetas):
+    prioridad = {'critico': 0, 'atencion': 1, 'optimo': 2, 'sin_datos': 3}
+    tarjetas.sort(key=lambda t: (
+        prioridad.get(t['resumen']['estado'], 9),
+        -t['num_alertas'],
+        t['instalacion'].nombre,
+    ))
+    return tarjetas
+
+
+def _estado_agregado_grupo(tarjetas):
+    niveles = {'sin_datos': 0, 'optimo': 1, 'atencion': 2, 'critico': 3}
+    inverso = {0: 'sin_datos', 1: 'optimo', 2: 'atencion', 3: 'critico'}
+    peor = 0
+    for t in tarjetas:
+        peor = max(peor, niveles.get(t['resumen']['estado'], 0))
+        if t['plantas_riesgo'] > 0 and peor < 2:
+            peor = 2
+    estado = inverso[peor]
+    label, css = ESTADO_META[estado]
+    return estado, label, css
 
 
 def _obtener_instalacion_autorizada(user, instalacion_id):
@@ -126,51 +173,70 @@ def user_login(request):
 @login_required(login_url='login')
 def inicio_dashboard(request):
     instalaciones = list(_instalaciones_autorizadas(request.user))
-    alertas_no_leidas = AlertaGenerada.objects.filter(
-        regla__sensor__instalacion__in=instalaciones, leida=False
-    ).order_by('-fecha_generacion')[:5]
     cantidad_alertas = AlertaGenerada.objects.filter(
         regla__sensor__instalacion__in=instalaciones, leida=False
     ).count()
 
-    tarjetas = []
-    total_plantas = 0
-    plantas_en_riesgo = 0
+    tarjetas_todas = [_construir_tarjeta_instalacion(inst) for inst in instalaciones]
+    total_plantas = sum(t['num_plantas'] for t in tarjetas_todas)
+    plantas_en_riesgo = sum(t['plantas_riesgo'] for t in tarjetas_todas)
 
-    for inst in instalaciones:
-        sensores_amb = inst.sensores.filter(activo=True, planta__isnull=True)
-        resumen_amb = resumen_sensores(sensores_amb)
-        plantas = list(inst.plantas.filter(activa=True))
-        total_plantas += len(plantas)
+    por_invernadero = {}
+    tarjetas_sin_invernadero = []
+    for t in tarjetas_todas:
+        inv_id = t['instalacion'].invernadero_id
+        if inv_id:
+            por_invernadero.setdefault(inv_id, []).append(t)
+        else:
+            tarjetas_sin_invernadero.append(t)
+    _ordenar_tarjetas(tarjetas_sin_invernadero)
 
-        riesgo_inst = 0
-        for p in plantas:
-            res_p = resumen_planta(p)
-            if res_p['estado'] in ('atencion', 'critico'):
-                riesgo_inst += 1
-        plantas_en_riesgo += riesgo_inst
+    if _es_admin(request.user):
+        invernaderos_visibles = list(Invernadero.objects.all().order_by('nombre'))
+    else:
+        invernaderos_visibles = list(
+            Invernadero.objects.filter(id__in=por_invernadero.keys()).order_by('nombre')
+        )
 
-        alertas_inst = AlertaGenerada.objects.filter(
-            regla__sensor__instalacion=inst, leida=False
-        ).count()
-
-        tarjetas.append({
-            'instalacion': inst,
-            'resumen': resumen_amb,
-            'num_plantas': len(plantas),
-            'plantas_riesgo': riesgo_inst,
-            'num_alertas': alertas_inst,
+    grupos_invernaderos = []
+    for inv in invernaderos_visibles:
+        tarjetas_inv = _ordenar_tarjetas(por_invernadero.get(inv.pk, []))
+        estado, estado_label, estado_css = _estado_agregado_grupo(tarjetas_inv)
+        grupos_invernaderos.append({
+            'invernadero': inv,
+            'tarjetas': tarjetas_inv,
+            'num_torres': len(tarjetas_inv),
+            'num_plantas': sum(t['num_plantas'] for t in tarjetas_inv),
+            'plantas_riesgo': sum(t['plantas_riesgo'] for t in tarjetas_inv),
+            'num_alertas': sum(t['num_alertas'] for t in tarjetas_inv),
+            'estado': estado,
+            'estado_label': estado_label,
+            'estado_css': estado_css,
         })
+
+    filtro_inv = request.GET.get('invernadero', '')
+    grupos_filtrados = grupos_invernaderos
+    sin_inv_filtrado = tarjetas_sin_invernadero
+    if filtro_inv == 'sin_asignar':
+        grupos_filtrados = []
+    elif filtro_inv:
+        grupos_filtrados = [g for g in grupos_invernaderos if str(g['invernadero'].pk) == filtro_inv]
+        sin_inv_filtrado = []
 
     contexto = {
         'instalaciones': instalaciones,
-        'tarjetas': tarjetas,
+        'tarjetas': tarjetas_todas,
+        'grupos_invernaderos': grupos_filtrados,
+        'tarjetas_sin_invernadero': sin_inv_filtrado,
+        'invernaderos_filtro': invernaderos_visibles,
+        'tiene_sin_asignar': len(tarjetas_sin_invernadero) > 0,
+        'filtro_inv': filtro_inv,
+        'total_invernaderos': len(invernaderos_visibles),
         'total_instalaciones': len(instalaciones),
         'total_plantas': total_plantas,
         'plantas_en_riesgo': plantas_en_riesgo,
         'usuario': request.user,
         'es_admin': _es_admin(request.user),
-        'alertas': alertas_no_leidas,
         'num_alertas': cantidad_alertas,
     }
     return render(request, 'dashboard/inicio.html', contexto)
@@ -199,7 +265,74 @@ def detalle_instalacion(request, instalacion_id):
 
 
 # ============================================================
-# CRUD: INSTALACIONES (Protegido por permisos RBAC)
+# CRUD: INVERNADEROS (Protegido por permisos RBAC)
+# ============================================================
+
+@login_required(login_url='login')
+@permission_required('telemetria.add_invernadero', raise_exception=True)
+def crear_invernadero(request):
+    if request.method == 'POST':
+        form = InvernaderoForm(request.POST)
+        if form.is_valid():
+            nuevo = form.save()
+            messages.success(request, f'Invernadero "{nuevo.nombre}" creado correctamente.')
+            return redirect('inicio_dashboard')
+    else:
+        form = InvernaderoForm()
+
+    contexto = {
+        'form': form,
+        'titulo': 'Nuevo Invernadero',
+        'descripcion': 'Registra una nave o invernadero para agrupar visualmente sus macetas verticales.',
+        'volver_url': reverse('inicio_dashboard'),
+    }
+    return render(request, 'dashboard/formulario.html', contexto)
+
+
+@login_required(login_url='login')
+@permission_required('telemetria.change_invernadero', raise_exception=True)
+def editar_invernadero(request, invernadero_id):
+    invernadero = get_object_or_404(Invernadero, pk=invernadero_id)
+    if request.method == 'POST':
+        form = InvernaderoForm(request.POST, instance=invernadero)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Invernadero "{invernadero.nombre}" actualizado.')
+            return redirect('inicio_dashboard')
+    else:
+        form = InvernaderoForm(instance=invernadero)
+
+    contexto = {
+        'form': form,
+        'titulo': f'Editar Invernadero: {invernadero.nombre}',
+        'descripcion': 'Actualiza el nombre, sector o estado operativo del invernadero.',
+        'volver_url': reverse('inicio_dashboard'),
+    }
+    return render(request, 'dashboard/formulario.html', contexto)
+
+
+@login_required(login_url='login')
+@permission_required('telemetria.delete_invernadero', raise_exception=True)
+def eliminar_invernadero(request, invernadero_id):
+    invernadero = get_object_or_404(Invernadero, pk=invernadero_id)
+    if request.method == 'POST':
+        nombre = invernadero.nombre
+        invernadero.delete()
+        messages.success(
+            request,
+            f'Invernadero "{nombre}" eliminado. Sus torres pasaron a estar sin invernadero asignado.',
+        )
+        return redirect('inicio_dashboard')
+
+    contexto = {
+        'elemento': f'el invernadero "{invernadero.nombre}" (sus torres se conservarán independientes)',
+        'volver_url': reverse('inicio_dashboard'),
+    }
+    return render(request, 'dashboard/confirmar_eliminar.html', contexto)
+
+
+# ============================================================
+# CRUD: INSTALACIONES / TORRES (Protegido por permisos RBAC)
 # ============================================================
 
 @login_required(login_url='login')
@@ -212,12 +345,14 @@ def crear_instalacion(request):
             messages.success(request, f'Instalación "{nueva.nombre}" creada exitosamente y variables configuradas.')
             return redirect('inicio_dashboard')
     else:
-        form = InstalacionForm()
+        inv_pre = request.GET.get('invernadero')
+        initial = {'invernadero': inv_pre} if inv_pre else None
+        form = InstalacionForm(initial=initial)
 
     contexto = {
         'form': form,
-        'titulo': 'Nueva Instalación de Cultivo',
-        'descripcion': 'Registra un nuevo sistema o huerto vertical para comenzar a recibir telemetría.',
+        'titulo': 'Nueva Torre / Maceta Vertical',
+        'descripcion': 'Registra una maceta o torre hidropónica y asígnala a un invernadero.',
         'volver_url': reverse('inicio_dashboard'),
     }
     return render(request, 'dashboard/formulario.html', contexto)
