@@ -229,7 +229,6 @@ def resumen_planta(planta, limite_lecturas=30):
         resumen['origen_datos'] = 'propios'
         resumen['origen_label'] = 'Planta testigo (sensores propios)'
         return resumen
-
     sensores_torre = list(planta.instalacion.sensores.filter(activo=True, planta__isnull=True))
     resumen = resumen_sensores(sensores_torre, limite_lecturas=limite_lecturas)
     resumen['origen_datos'] = 'compartidos'
@@ -245,4 +244,3 @@ def resumen_planta(planta, limite_lecturas=30):
         )
 
     return resumen
-
