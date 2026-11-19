@@ -38,9 +38,15 @@
         <div class="panel-body">
             <div class="row g-3 align-items-center">
                 <div class="col-6 col-md-2">
-                    <div class="stat-label">Día de cultivo</div>
+                    <div class="stat-label">{% if planta.dias_desde_siembra > planta.dias_en_torre %}Edad est. cultivo{% else %}Día de cultivo{% endif %}</div>
                     <div class="fw-semibold num" style="font-size:1.35rem;">Día {{ planta.dias_desde_siembra }}</div>
-                    <div class="stat-note">Plantada: {{ planta.fecha_siembra|date:"d/m/Y" }}</div>
+                    <div class="stat-note">
+                        {% if planta.dias_desde_siembra > planta.dias_en_torre %}
+                            En torre: {{ planta.dias_en_torre }}d ({{ planta.fecha_siembra|date:"d/m/Y" }})
+                        {% else %}
+                            Plantada: {{ planta.fecha_siembra|date:"d/m/Y" }}
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="col-6 col-md-2">
                     <div class="stat-label">Cosecha aprox.</div>

@@ -51,9 +51,11 @@
                         <div class="row g-2 mb-2 text-center">
                             <div class="col-4">
                                 <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                    <div class="stat-label">Plantada</div>
+                                    <div class="stat-label">{% if p.dias_desde_siembra > p.dias_en_torre %}Edad est.{% else %}Plantada{% endif %}</div>
                                     <div class="fw-semibold num" style="font-size:0.95rem;">Día {{ p.dias_desde_siembra }}</div>
-                                    <div class="t-muted num" style="font-size:0.68rem;">{{ p.fecha_siembra|date:"d/m/Y" }}</div>
+                                    <div class="t-muted num" style="font-size:0.68rem;">
+                                        {% if p.dias_desde_siembra > p.dias_en_torre %}En torre: {{ p.dias_en_torre }}d{% else %}{{ p.fecha_siembra|date:"d/m/Y" }}{% endif %}
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-4">

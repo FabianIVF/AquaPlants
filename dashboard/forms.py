@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django import forms
 from django.contrib.auth.models import Group, User
+from django.utils import timezone
 from telemetria.models import Invernadero, Instalacion, Planta, ReglaAlerta, Sensor, SENSOR_CATALOGO
 
 # Opciones de sensores configurables para los huertos
@@ -315,6 +318,12 @@ class PlantaForm(forms.ModelForm):
             'activa': 'Planta activa en monitoreo',
             'notas': 'Notas agronómicas',
         }
+        help_texts = {
+            'etapa': (
+                'Si trasplantas una planta ya iniciada (ej. Vegetativo o Floración), '
+                'se descontará automáticamente el tiempo previo estimado del ciclo total.'
+            ),
+        }
         widgets = {
             'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. T1-N2-01'}),
             'especie': forms.Select(attrs={'class': 'form-select'}),
@@ -329,7 +338,7 @@ class PlantaForm(forms.ModelForm):
     def __init__(self, *args, instalacion=None, **kwargs):
         self.instalacion_target = instalacion
         super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
+        if self.instance and not self.instance._state.adding:
             activos = list(self.instance.sensores.filter(activo=True).values_list('tipo', flat=True))
             self.fields['sensores_planta'].initial = activos
         else:
@@ -340,16 +349,22 @@ class PlantaForm(forms.ModelForm):
         instalacion = self.instalacion_target or getattr(self.instance, 'instalacion', None)
         if instalacion:
             qs = Planta.objects.filter(instalacion=instalacion, codigo__iexact=codigo)
-            if self.instance and self.instance.pk:
+            if self.instance and not self.instance._state.adding:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
                 raise forms.ValidationError(f'Ya existe una planta con el código "{codigo}" en esta instalación.')
         return codigo
 
     def save(self, commit=True):
+        es_nueva = self.instance._state.adding
         planta = super().save(commit=False)
         if self.instalacion_target and not planta.instalacion_id:
             planta.instalacion = self.instalacion_target
+        if es_nueva and planta.dias_previos == 0 and planta.fecha_siembra:
+            if planta.fecha_siembra >= timezone.localdate() - timedelta(days=1):
+                planta.dias_previos = round(
+                    planta.dias_ciclo * Planta.PORCENTAJE_ETAPA.get(planta.etapa, 0.0)
+                )
         if commit:
             planta.save()
             self._guardar_sensores_planta(planta)

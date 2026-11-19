@@ -641,6 +641,58 @@ class PlantasYAnaliticaTestCase(TestCase):
         res = resumen_planta(tomate)
         self.assertTrue(any('preparar cosecha' in r.lower() for r in res['recomendaciones']))
 
+    def test_planta_trasplantada_en_etapa_avanzada_descuenta_dias_cosecha(self):
+        """Crear una planta hoy en etapa avanzada descuenta los días previos estimados del ciclo total."""
+        from dashboard.forms import PlantaForm
+
+        hoy = timezone.localdate()
+        form_tomate = PlantaForm(
+            data={
+                'codigo': 'TomateCherry',
+                'especie': 'tomate_cherry',
+                'variedad': 'Cherry Bloom',
+                'posicion': '1',
+                'fecha_siembra': hoy.isoformat(),
+                'etapa': 'floracion',
+                'activa': True,
+            },
+            instalacion=self.instalacion,
+        )
+        self.assertTrue(form_tomate.is_valid(), form_tomate.errors)
+        tomate = form_tomate.save()
+
+        # Tomate Cherry: ciclo 80d, floración = 60% -> 48 días previos, 32 restantes
+        self.assertEqual(tomate.dias_previos, 48)
+        self.assertEqual(tomate.dias_en_torre, 0)
+        self.assertEqual(tomate.dias_desde_siembra, 48)
+        self.assertEqual(tomate.dias_para_cosecha, 32)
+        self.assertEqual(tomate.progreso_cosecha, 60)
+        self.assertEqual(tomate.fecha_estimada_cosecha, hoy + timedelta(days=32))
+
+        # Al avanzar 5 días en la torre, los días totales y el restante deben progresar
+        tomate.fecha_siembra = hoy - timedelta(days=5)
+        tomate.save()
+        self.assertEqual(tomate.dias_en_torre, 5)
+        self.assertEqual(tomate.dias_desde_siembra, 53)
+        self.assertEqual(tomate.dias_para_cosecha, 27)
+
+        # Verificar con otra especie (Lechuga Costina 45d en Vegetativo = 20% -> 9 días)
+        form_lechuga = PlantaForm(
+            data={
+                'codigo': 'Lechuga-Veg',
+                'especie': 'lechuga_costina',
+                'fecha_siembra': hoy.isoformat(),
+                'etapa': 'vegetativo',
+                'activa': True,
+            },
+            instalacion=self.instalacion,
+        )
+        self.assertTrue(form_lechuga.is_valid(), form_lechuga.errors)
+        lechuga = form_lechuga.save()
+        self.assertEqual(lechuga.dias_previos, 9)
+        self.assertEqual(lechuga.dias_desde_siembra, 9)
+        self.assertEqual(lechuga.dias_para_cosecha, 36)
+
     def test_lista_plantas_ordena_por_severidad_criticas_primero(self):
         """Las plantas críticas y en atención deben aparecer antes que las óptimas en el listado."""
         p_opt = Planta.objects.create(instalacion=self.instalacion, codigo='P-OPT', especie='lechuga_costina')

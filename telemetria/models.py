@@ -202,6 +202,12 @@ class Planta(models.Model):
         ('floracion', 'Floración / Desarrollo'),
         ('cosecha', 'Lista para Cosecha'),
     ]
+    PORCENTAJE_ETAPA = {
+        'germinacion': 0.0,
+        'vegetativo': 0.20,
+        'floracion': 0.60,
+        'cosecha': 1.0,
+    }
     ESPECIE_CHOICES = [
         (clave, f"{datos['nombre']} (~{datos['dias_cosecha']} días)")
         for clave, datos in PLANTAS_CATALOGO.items()
@@ -216,6 +222,10 @@ class Planta(models.Model):
     posicion = models.CharField(max_length=50, blank=True)
     fecha_siembra = models.DateField(default=timezone.localdate)
     etapa = models.CharField(max_length=20, choices=ETAPA_CHOICES, default='germinacion')
+    dias_previos = models.PositiveIntegerField(
+        default=0,
+        help_text="Días de desarrollo previo acumulados al trasplantar en una etapa avanzada",
+    )
     activa = models.BooleanField(default=True)
     notas = models.TextField(blank=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
@@ -246,18 +256,27 @@ class Planta(models.Model):
         return self.info_especie['dias_cosecha']
 
     @property
-    def dias_desde_siembra(self):
+    def dias_en_torre(self):
         return max(0, (timezone.localdate() - self.fecha_siembra).days)
 
     @property
-    def fecha_estimada_cosecha(self):
-        return self.fecha_siembra + timedelta(days=self.dias_ciclo)
+    def dias_minimos_etapa(self):
+        pct = self.PORCENTAJE_ETAPA.get(self.etapa, 0.0)
+        return round(self.dias_ciclo * pct)
+
+    @property
+    def dias_desde_siembra(self):
+        return max(self.dias_en_torre + self.dias_previos, self.dias_minimos_etapa)
 
     @property
     def dias_para_cosecha(self):
         if self.etapa == 'cosecha':
             return 0
         return max(0, self.dias_ciclo - self.dias_desde_siembra)
+
+    @property
+    def fecha_estimada_cosecha(self):
+        return timezone.localdate() + timedelta(days=self.dias_para_cosecha)
 
     @property
     def progreso_cosecha(self):
