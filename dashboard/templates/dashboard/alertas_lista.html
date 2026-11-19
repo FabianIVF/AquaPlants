@@ -1,0 +1,203 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{% if instalacion %}Alertas — {{ instalacion.nombre }}{% else %}Centro de Alertas — AquaPlants{% endif %}{% endblock %}
+
+{% block content %}
+    {% if instalacion %}
+        {% include "dashboard/_instalacion_nav.html" %}
+    {% else %}
+        <div class="page-head">
+            <div>
+                <h1>Centro de alertas y notificaciones</h1>
+                <p>Filtra por estado, severidad, instalación o planta y gestiona alertas pendientes.</p>
+            </div>
+            {% if puede_gestionar and total_pendientes > 0 %}
+            <form method="post" action="{% url 'marcar_todas_alertas_leidas' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="btn btn-primary-ap btn-sm">
+                    <i class="bi bi-check2-all"></i>Marcar todas como leídas ({{ total_pendientes }})
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- Resumen numérico -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="panel stat">
+                <div class="stat-label">Sin leer</div>
+                <div class="stat-value {% if total_pendientes > 0 %}t-danger{% else %}t-accent{% endif %}">{{ total_pendientes }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="panel stat">
+                <div class="stat-label">Alertas rojas (exceso)</div>
+                <div class="stat-value">{{ total_rojas }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="panel stat">
+                <div class="stat-label">Alertas azules (caída)</div>
+                <div class="stat-value">{{ total_azules }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="panel stat">
+                <div class="stat-label">Leídas / resueltas</div>
+                <div class="stat-value t-muted">{{ total_leidas }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de filtros y acciones -->
+    <div class="panel mb-4">
+        <div class="panel-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" name="q" value="{{ busqueda }}" class="form-control form-control-sm" placeholder="Sensor, planta, mensaje...">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Estado</label>
+                    <select name="estado" class="form-select form-select-sm">
+                        <option value="">Todas</option>
+                        <option value="pendientes" {% if filtro_estado == 'pendientes' %}selected{% endif %}>Sin leer</option>
+                        <option value="leidas" {% if filtro_estado == 'leidas' %}selected{% endif %}>Leídas</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Severidad</label>
+                    <select name="severidad" class="form-select form-select-sm">
+                        <option value="">Todas</option>
+                        <option value="roja" {% if filtro_severidad == 'roja' %}selected{% endif %}>Alerta Roja (Alto)</option>
+                        <option value="azul" {% if filtro_severidad == 'azul' %}selected{% endif %}>Alerta Azul (Bajo)</option>
+                    </select>
+                </div>
+                {% if not instalacion %}
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Instalación</label>
+                    <select name="instalacion" class="form-select form-select-sm">
+                        <option value="">Todas las instalaciones</option>
+                        {% for inst in instalaciones_disponibles %}
+                        <option value="{{ inst.pk }}" {% if filtro_inst == inst.pk|stringformat:"s" %}selected{% endif %}>{{ inst.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary-ap btn-sm flex-fill">
+                        <i class="bi bi-funnel"></i>Filtrar
+                    </button>
+                    {% if filtro_estado or filtro_severidad or filtro_inst or busqueda %}
+                    <a href="{% if instalacion %}{% url 'alertas_instalacion' instalacion.pk %}{% else %}{% url 'lista_alertas' %}{% endif %}" class="btn btn-ghost btn-sm" title="Limpiar filtros">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+
+            {% if instalacion and puede_gestionar and total_pendientes > 0 %}
+            <div class="d-flex justify-content-end mt-3 pt-3" style="border-top:1px solid var(--ap-border);">
+                <form method="post" action="{% url 'marcar_todas_alertas_leidas' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="instalacion_id" value="{{ instalacion.pk }}">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn btn-ghost btn-sm">
+                        <i class="bi bi-check2-all"></i>Marcar alertas de {{ instalacion.nombre }} como leídas ({{ total_pendientes }})
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Lista de alertas -->
+    <div class="panel">
+        <div class="table-responsive">
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th>Fecha y hora</th>
+                        <th>Origen</th>
+                        <th>Detalle de alerta</th>
+                        <th>Estado</th>
+                        <th class="text-end">Gestión</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in alertas %}
+                    {% with sensor=a.regla.sensor %}
+                    <tr {% if not a.leida %}style="background:rgba(255,255,255,.02);"{% endif %}>
+                        <td class="num t-muted" style="white-space:nowrap;">
+                            {{ a.fecha_generacion|date:"d/m/Y H:i:s" }}
+                        </td>
+                        <td>
+                            <div class="fw-semibold" style="font-size:0.84rem;">{{ sensor.instalacion.nombre }}</div>
+                            <div class="t-muted" style="font-size:0.75rem;">
+                                {% if sensor.planta %}{{ sensor.planta.codigo }} &middot; {% endif %}{{ sensor.get_tipo_display }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if "ROJA" in a.mensaje or "ALTA" in a.mensaje %}
+                                    <span class="sev sev-high flex-shrink-0"></span>
+                                {% else %}
+                                    <span class="sev sev-low flex-shrink-0"></span>
+                                {% endif %}
+                                <span {% if not a.leida %}class="fw-semibold"{% endif %}>{{ a.mensaje }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if a.leida %}
+                                <span class="status status-off">Leída</span>
+                            {% else %}
+                                <span class="status status-err">Sin leer</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end" style="white-space:nowrap;">
+                            {% if sensor.planta %}
+                                <a href="{% url 'detalle_planta' sensor.instalacion.pk sensor.planta.pk %}" class="btn btn-ghost btn-sm me-1" title="Ir a la planta">
+                                    <i class="bi bi-flower1"></i>Ver
+                                </a>
+                            {% else %}
+                                <a href="{% url 'detalle_instalacion' sensor.instalacion.pk %}" class="btn btn-ghost btn-sm me-1" title="Ir al panel">
+                                    <i class="bi bi-activity"></i>Ver
+                                </a>
+                            {% endif %}
+                            {% if puede_gestionar %}
+                            <form method="post" action="{% url 'toggle_alerta_leida' a.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="btn btn-ghost btn-sm me-1">
+                                    {% if a.leida %}
+                                        <i class="bi bi-arrow-counterclockwise"></i>Reabrir
+                                    {% else %}
+                                        <i class="bi bi-check2"></i>Marcar leída
+                                    {% endif %}
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% if puede_eliminar %}
+                            <form method="post" action="{% url 'eliminar_alerta' a.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="btn btn-ghost-danger btn-sm" title="Eliminar alerta">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="empty">No se encontraron alertas con los filtros aplicados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

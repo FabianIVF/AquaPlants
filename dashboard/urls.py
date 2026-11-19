@@ -5,6 +5,13 @@ urlpatterns = [
     path('login/', views.user_login, name='login'),
     path('', views.inicio_dashboard, name='inicio_dashboard'),
 
+    # Centro de Alertas
+    path('alertas/', views.lista_alertas, name='lista_alertas'),
+    path('alertas/marcar-todas/', views.marcar_todas_alertas_leidas, name='marcar_todas_alertas_leidas'),
+    path('alertas/<int:alerta_id>/toggle/', views.toggle_alerta_leida, name='toggle_alerta_leida'),
+    path('alertas/<int:alerta_id>/eliminar/', views.eliminar_alerta, name='eliminar_alerta'),
+    path('instalacion/<str:instalacion_id>/alertas/', views.lista_alertas, name='alertas_instalacion'),
+
     # CRUD Usuarios y Asignación de Instalaciones (Solo Administrador)
     path('usuarios/', views.lista_usuarios, name='lista_usuarios'),
     path('usuarios/crear/', views.crear_usuario, name='crear_usuario'),

@@ -2,19 +2,6 @@
 
 {% block title %}Panel en vivo — {{ instalacion.nombre }}{% endblock %}
 
-{% block nav_actions %}
-    <div class="dropdown">
-        <button class="btn btn-ghost btn-sm dropdown-toggle" id="btnAlertas" data-bs-toggle="dropdown">
-            <i class="bi bi-bell"></i>Alertas
-            <span id="badge-alertas" class="count-badge d-none">0</span>
-        </button>
-        <ul id="lista-alertas" class="dropdown-menu dropdown-menu-end" style="min-width:340px;">
-            <li><h6 class="dropdown-header">Alertas de sensores</h6></li>
-            <li><span class="dropdown-item-text t-muted">Sin alertas activas.</span></li>
-        </ul>
-    </div>
-{% endblock %}
-
 {% block content %}
     {% include "dashboard/_instalacion_nav.html" %}
 
@@ -94,14 +81,19 @@
         {% endfor %}
     </div>
 
-    <!-- Tabla de últimas mediciones -->
+    <!-- Tabla compacta de últimas mediciones -->
     <div class="panel mb-4">
-        <div class="panel-head">
-            <h2 class="panel-title">Últimas mediciones</h2>
-            <span class="status status-ok">En vivo</span>
+        <div class="panel-head py-2">
+            <div>
+                <h2 class="panel-title">Últimas mediciones</h2>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-link-ap btn-sm" style="font-size:0.78rem;">Ver historial completo</a>
+                <span class="status status-ok">En vivo</span>
+            </div>
         </div>
-        <div class="table-responsive">
-            <table class="tbl num">
+        <div class="table-responsive live-table-scroll">
+            <table class="tbl tbl-compact num">
                 <thead>
                     <tr>
                         <th>Hora</th>
@@ -112,7 +104,7 @@
                 </thead>
                 <tbody id="cuerpo-tabla">
                     <tr>
-                        <td colspan="4" class="empty">Esperando datos del simulador IoT...</td>
+                        <td colspan="4" class="empty py-3">Esperando datos del simulador IoT...</td>
                     </tr>
                 </tbody>
             </table>
@@ -344,7 +336,7 @@ function actualizarTabla(sensoresDatos) {
     const tbody = document.getElementById('cuerpo-tabla');
     if (!tbody) return;
 
-    tbody.innerHTML = filas.slice(0, 20).map((f, i) => `
+    tbody.innerHTML = filas.slice(0, 10).map((f, i) => `
         <tr class="${i === 0 ? 'row-nueva' : ''}">
             <td class="t-muted">${f.timestamp}</td>
             <td>${ETIQUETAS[f.tipo] ?? f.tipo}</td>

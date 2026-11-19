@@ -15,34 +15,6 @@
                 <i class="bi bi-plus-lg"></i>Nueva instalación
             </a>
             {% endif %}
-
-            <div class="dropdown">
-                <button class="btn btn-ghost btn-sm dropdown-toggle" type="button" id="campanitaAlertas" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-bell"></i>Alertas
-                    {% if num_alertas > 0 %}
-                    <span class="count-badge">{{ num_alertas }}<span class="visually-hidden"> alertas no leídas</span></span>
-                    {% endif %}
-                </button>
-
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="campanitaAlertas" style="min-width: 340px;">
-                    <li><h6 class="dropdown-header">Últimas alertas de sensores</h6></li>
-                    {% for alerta in alertas %}
-                        <li>
-                            <a class="dropdown-item" href="#">
-                                {% if "ROJA" in alerta.mensaje or "ALTA" in alerta.mensaje %}
-                                    <span class="sev sev-high"></span><strong>{{ alerta.mensaje }}</strong>
-                                {% else %}
-                                    <span class="sev sev-low"></span><strong>{{ alerta.mensaje }}</strong>
-                                {% endif %}
-                                <br>
-                                <small class="t-muted num" style="padding-left:1.05rem;">{{ alerta.fecha_generacion|time:"H:i:s" }}</small>
-                            </a>
-                        </li>
-                    {% empty %}
-                        <li><span class="dropdown-item-text t-muted">No hay alertas activas.</span></li>
-                    {% endfor %}
-                </ul>
-            </div>
         </div>
     </div>
 

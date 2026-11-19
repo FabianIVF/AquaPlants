@@ -183,6 +183,9 @@
         .tbl tbody td { padding: 0.7rem 1.15rem; border-bottom: 1px solid var(--ap-border); vertical-align: middle; }
         .tbl tbody tr:last-child td { border-bottom: 0; }
         .tbl tbody tr:hover td { background: rgba(255,255,255,.015); }
+        .tbl.tbl-compact thead th { padding: 0.45rem 0.9rem; font-size: 0.68rem; }
+        .tbl.tbl-compact tbody td { padding: 0.42rem 0.9rem; font-size: 0.82rem; }
+        .live-table-scroll { max-height: 220px; overflow-y: auto; }
         .tbl .empty { text-align: center; color: var(--ap-muted); padding: 2.25rem 1rem; }
         .row-nueva td { animation: rowIn .8s ease; }
         @keyframes rowIn { from { background: rgba(52,163,124,.14); } to { background: transparent; } }
@@ -278,6 +281,12 @@
                     <a href="{% url 'inicio_dashboard' %}" class="app-nav-link {% if request.resolver_match.url_name == 'inicio_dashboard' %}active{% endif %}">
                         <i class="bi bi-grid me-1"></i>Monitor
                     </a>
+                    <a href="{% url 'lista_alertas' %}" class="app-nav-link {% if 'alerta' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="bi bi-bell me-1"></i>Alertas
+                        {% if global_num_alertas > 0 %}
+                        <span class="count-badge">{{ global_num_alertas }}</span>
+                        {% endif %}
+                    </a>
                     {% if request.user.is_superuser or perms.auth.view_user %}
                     <a href="{% url 'lista_usuarios' %}" class="app-nav-link {% if 'usuario' in request.resolver_match.url_name %}active{% endif %}">
                         <i class="bi bi-people me-1"></i>Usuarios
@@ -286,7 +295,6 @@
                 </nav>
             </div>
             <div class="app-nav-right">
-                {% block nav_actions %}{% endblock %}
                 <span class="app-user">Sesión: <strong>{{ request.user.username }}</strong></span>
                 <a href="/logout/" class="btn btn-ghost btn-sm"><i class="bi bi-box-arrow-right"></i>Cerrar sesión</a>
             </div>

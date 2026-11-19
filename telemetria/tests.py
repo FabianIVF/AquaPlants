@@ -663,3 +663,62 @@ class PlantasYAnaliticaTestCase(TestCase):
 
         orden = [f['planta'].codigo for f in resp.context['fichas']]
         self.assertEqual(orden, ['P-CRT', 'P-ATN', 'P-OPT'])
+
+
+class AlertasCentroTestCase(TestCase):
+    """
+    Pruebas del Centro de Alertas navegable, filtros, gestión de lectura y permisos por rol.
+    """
+    def setUp(self):
+        call_command('setup_roles', stdout=StringIO())
+        self.inst = Instalacion.objects.create(nombre="Huerto Alertas Centro", ubicacion="Sector A")
+        self.sensor = Sensor.objects.create(
+            instalacion=self.inst, tipo='ph', modelo_hardware='pH v1', activo=True
+        )
+        self.regla = ReglaAlerta.objects.create(
+            sensor=self.sensor, limite_minimo=5.5, limite_maximo=6.8, activa=True
+        )
+        med1 = Medicion.objects.create(sensor=self.sensor, valor=8.10, estado_conexion=True)
+        med2 = Medicion.objects.create(sensor=self.sensor, valor=4.20, estado_conexion=True)
+        self.alerta_roja = AlertaGenerada.objects.create(
+            regla=self.regla, medicion=med1, mensaje="¡ALERTA ROJA! pH ALTO: 8.10 pH", leida=False
+        )
+        self.alerta_azul = AlertaGenerada.objects.create(
+            regla=self.regla, medicion=med2, mensaje="¡ALERTA AZUL! pH BAJO: 4.20 pH", leida=True
+        )
+
+        self.encargado = User.objects.create_user(username='enc_al', password='Pass1234!')
+        self.encargado.groups.add(Group.objects.get(name='Encargado de cultivo'))
+        self.supervisor = User.objects.create_user(username='sup_al', password='Pass1234!')
+        self.supervisor.groups.add(Group.objects.get(name='Supervisor'))
+        self.inst.encargados.add(self.encargado, self.supervisor)
+        self.client = Client()
+
+    def test_filtrar_alertas_por_estado_severidad_y_busqueda(self):
+        """Los filtros ?estado=, ?severidad= y ?q= devuelven exactamente las alertas coincidentes."""
+        self.client.login(username='enc_al', password='Pass1234!')
+
+        resp_pend = self.client.get('/dashboard/alertas/?estado=pendientes')
+        self.assertEqual(resp_pend.status_code, 200)
+        self.assertEqual([a.pk for a in resp_pend.context['alertas']], [self.alerta_roja.pk])
+
+        resp_azul = self.client.get('/dashboard/alertas/?severidad=azul')
+        self.assertEqual(resp_azul.status_code, 200)
+        self.assertEqual([a.pk for a in resp_azul.context['alertas']], [self.alerta_azul.pk])
+
+        resp_q = self.client.get('/dashboard/alertas/?q=8.10')
+        self.assertEqual(resp_q.status_code, 200)
+        self.assertEqual([a.pk for a in resp_q.context['alertas']], [self.alerta_roja.pk])
+
+    def test_encargado_marca_alerta_leida_y_supervisor_recibe_403(self):
+        """Encargado gestiona alertas (toggle y marcar todas); Supervisor solo ve (403 al modificar)."""
+        self.client.login(username='sup_al', password='Pass1234!')
+        self.assertEqual(self.client.get('/dashboard/alertas/').status_code, 200)
+        self.assertEqual(self.client.post(f'/dashboard/alertas/{self.alerta_roja.pk}/toggle/').status_code, 403)
+        self.assertEqual(self.client.post('/dashboard/alertas/marcar-todas/').status_code, 403)
+
+        self.client.login(username='enc_al', password='Pass1234!')
+        resp = self.client.post(f'/dashboard/alertas/{self.alerta_roja.pk}/toggle/')
+        self.assertEqual(resp.status_code, 302)
+        self.alerta_roja.refresh_from_db()
+        self.assertTrue(self.alerta_roja.leida)

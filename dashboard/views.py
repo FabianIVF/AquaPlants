@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -624,3 +625,113 @@ def eliminar_usuario(request, user_id):
         'volver_url': reverse('lista_usuarios'),
     }
     return render(request, 'dashboard/confirmar_eliminar.html', contexto)
+
+
+# ============================================================
+# CENTRO DE ALERTAS (Navegable, filtrable y gestionable)
+# ============================================================
+
+@login_required(login_url='login')
+def lista_alertas(request, instalacion_id=None):
+    instalacion = None
+    instalaciones_disponibles = list(_instalaciones_autorizadas(request.user))
+
+    if instalacion_id:
+        instalacion = _obtener_instalacion_autorizada(request.user, instalacion_id)
+        base_qs = AlertaGenerada.objects.filter(regla__sensor__instalacion=instalacion)
+    else:
+        base_qs = AlertaGenerada.objects.filter(regla__sensor__instalacion__in=instalaciones_disponibles)
+
+    base_qs = base_qs.select_related('regla__sensor__instalacion', 'regla__sensor__planta', 'medicion')
+
+    total_pendientes = base_qs.filter(leida=False).count()
+    total_rojas = base_qs.filter(mensaje__icontains='ROJA').count()
+    total_azules = base_qs.filter(mensaje__icontains='AZUL').count()
+    total_leidas = base_qs.filter(leida=True).count()
+
+    filtro_estado = request.GET.get('estado', '')
+    filtro_severidad = request.GET.get('severidad', '')
+    filtro_inst = request.GET.get('instalacion', '')
+    busqueda = request.GET.get('q', '').strip()
+
+    alertas_qs = base_qs
+    if filtro_estado == 'pendientes':
+        alertas_qs = alertas_qs.filter(leida=False)
+    elif filtro_estado == 'leidas':
+        alertas_qs = alertas_qs.filter(leida=True)
+
+    if filtro_severidad == 'roja':
+        alertas_qs = alertas_qs.filter(mensaje__icontains='ROJA')
+    elif filtro_severidad == 'azul':
+        alertas_qs = alertas_qs.filter(mensaje__icontains='AZUL')
+
+    if not instalacion and filtro_inst:
+        alertas_qs = alertas_qs.filter(regla__sensor__instalacion_id=filtro_inst)
+
+    if busqueda:
+        alertas_qs = alertas_qs.filter(
+            Q(mensaje__icontains=busqueda)
+            | Q(regla__sensor__tipo__icontains=busqueda)
+            | Q(regla__sensor__planta__codigo__icontains=busqueda)
+            | Q(regla__sensor__instalacion__nombre__icontains=busqueda)
+        )
+
+    alertas = list(alertas_qs.order_by('leida', '-fecha_generacion')[:100])
+
+    contexto = {
+        'instalacion': instalacion,
+        'instalaciones_disponibles': instalaciones_disponibles,
+        'alertas': alertas,
+        'total_pendientes': total_pendientes,
+        'total_rojas': total_rojas,
+        'total_azules': total_azules,
+        'total_leidas': total_leidas,
+        'filtro_estado': filtro_estado,
+        'filtro_severidad': filtro_severidad,
+        'filtro_inst': filtro_inst,
+        'busqueda': busqueda,
+        'tab_activa': 'alertas',
+        'puede_gestionar': _es_admin(request.user) or request.user.has_perm('telemetria.change_alertagenerada'),
+        'puede_eliminar': _es_admin(request.user) or request.user.has_perm('telemetria.delete_alertagenerada'),
+    }
+    return render(request, 'dashboard/alertas_lista.html', contexto)
+
+
+@login_required(login_url='login')
+@permission_required('telemetria.change_alertagenerada', raise_exception=True)
+def toggle_alerta_leida(request, alerta_id):
+    alerta = get_object_or_404(AlertaGenerada, pk=alerta_id)
+    _obtener_instalacion_autorizada(request.user, alerta.regla.sensor.instalacion_id)
+    if request.method == 'POST':
+        alerta.leida = not alerta.leida
+        alerta.save(update_fields=['leida'])
+        estado_txt = 'leída' if alerta.leida else 'pendiente'
+        messages.success(request, f'Alerta marcada como {estado_txt}.')
+    return redirect(request.POST.get('next') or 'lista_alertas')
+
+
+@login_required(login_url='login')
+@permission_required('telemetria.change_alertagenerada', raise_exception=True)
+def marcar_todas_alertas_leidas(request):
+    if request.method == 'POST':
+        instalacion_id = request.POST.get('instalacion_id')
+        if instalacion_id:
+            inst = _obtener_instalacion_autorizada(request.user, instalacion_id)
+            qs = AlertaGenerada.objects.filter(regla__sensor__instalacion=inst, leida=False)
+        else:
+            instalaciones = _instalaciones_autorizadas(request.user)
+            qs = AlertaGenerada.objects.filter(regla__sensor__instalacion__in=instalaciones, leida=False)
+        cantidad = qs.update(leida=True)
+        messages.success(request, f'{cantidad} alerta(s) marcadas como leídas.')
+    return redirect(request.POST.get('next') or 'lista_alertas')
+
+
+@login_required(login_url='login')
+@permission_required('telemetria.delete_alertagenerada', raise_exception=True)
+def eliminar_alerta(request, alerta_id):
+    alerta = get_object_or_404(AlertaGenerada, pk=alerta_id)
+    _obtener_instalacion_autorizada(request.user, alerta.regla.sensor.instalacion_id)
+    if request.method == 'POST':
+        alerta.delete()
+        messages.success(request, 'Alerta eliminada del registro.')
+    return redirect(request.POST.get('next') or 'lista_alertas')
