@@ -1,0 +1,78 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Gestión de Usuarios — AquaPlants{% endblock %}
+
+{% block content %}
+    <div class="page-head">
+        <div>
+            <h1>Gestión de usuarios y permisos</h1>
+            <p>Crea cuentas, asigna roles operativos y define a qué instalaciones tiene acceso cada usuario.</p>
+        </div>
+        <div class="page-actions">
+            <a href="{% url 'crear_usuario' %}" class="btn btn-primary-ap btn-sm">
+                <i class="bi bi-person-plus"></i>Nuevo usuario
+            </a>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="table-responsive">
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Nombre</th>
+                        <th>Rol</th>
+                        <th>Instalaciones asignadas</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in filas %}
+                    <tr>
+                        <td>
+                            <strong>{{ f.obj.username }}</strong>
+                            {% if f.obj.email %}<div class="t-muted" style="font-size:0.76rem;">{{ f.obj.email }}</div>{% endif %}
+                        </td>
+                        <td>{{ f.obj.get_full_name|default:"—" }}</td>
+                        <td><span class="tag">{{ f.rol }}</span></td>
+                        <td>
+                            {% if f.rol == 'Administrador' or f.obj.is_superuser %}
+                                <span class="t-accent" style="font-size:0.8rem;">Todas (acceso global)</span>
+                            {% else %}
+                                {% for inst in f.instalaciones %}
+                                    <span class="tag me-1">{{ inst.nombre }}</span>
+                                {% empty %}
+                                    <span class="t-muted" style="font-size:0.8rem;">Sin asignar</span>
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if f.obj.is_active %}
+                                <span class="status status-ok">Activo</span>
+                            {% else %}
+                                <span class="status status-off">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end" style="white-space:nowrap;">
+                            <a href="{% url 'editar_usuario' f.obj.pk %}" class="btn btn-ghost btn-sm me-1">
+                                <i class="bi bi-pencil"></i>Editar
+                            </a>
+                            {% if f.obj.pk != request.user.pk %}
+                            <a href="{% url 'eliminar_usuario' f.obj.pk %}" class="btn btn-ghost-danger btn-sm">
+                                <i class="bi bi-trash3"></i>Eliminar
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty">No hay usuarios registrados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

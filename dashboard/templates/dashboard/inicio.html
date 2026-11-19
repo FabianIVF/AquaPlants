@@ -6,7 +6,7 @@
     <div class="page-head">
         <div>
             <h1>Monitor de sistemas</h1>
-            <p>Gestión de instalaciones hidropónicas, telemetría y reglas de alerta.</p>
+            <p>Estado general de instalaciones hidropónicas, plantas monitoreadas y alertas.</p>
         </div>
 
         <div class="page-actions">
@@ -26,7 +26,6 @@
 
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="campanitaAlertas" style="min-width: 340px;">
                     <li><h6 class="dropdown-header">Últimas alertas de sensores</h6></li>
-
                     {% for alerta in alertas %}
                         <li>
                             <a class="dropdown-item" href="#">
@@ -47,34 +46,98 @@
         </div>
     </div>
 
+    <!-- Resumen ejecutivo para el cultivador -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="panel stat">
+                <div class="stat-label">Instalaciones</div>
+                <div class="stat-value">{{ total_instalaciones }}</div>
+                <div class="stat-note">{% if es_admin %}Acceso total{% else %}Asignadas a tu cuenta{% endif %}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="panel stat">
+                <div class="stat-label">Plantas activas</div>
+                <div class="stat-value">{{ total_plantas }}</div>
+                <div class="stat-note">Monitoreo individual</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="panel stat">
+                <div class="stat-label">Plantas en riesgo</div>
+                <div class="stat-value {% if plantas_en_riesgo > 0 %}t-danger{% else %}t-accent{% endif %}">{{ plantas_en_riesgo }}</div>
+                <div class="stat-note">Estado atención o crítico</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="panel stat">
+                <div class="stat-label">Alertas activas</div>
+                <div class="stat-value {% if num_alertas > 0 %}t-danger{% endif %}">{{ num_alertas }}</div>
+                <div class="stat-note">Pendientes de revisión</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjetas de instalaciones -->
     <div class="row g-3">
-        {% for instalacion in instalaciones %}
+        {% for item in tarjetas %}
+        {% with instalacion=item.instalacion res=item.resumen %}
         <div class="col-md-6 col-xl-4">
             <div class="panel site-card">
                 <div class="panel-body">
                     <div class="d-flex justify-content-between align-items-start gap-2">
-                        <h2 class="panel-title" style="font-size:1rem;">{{ instalacion.nombre }}</h2>
-                        {% if instalacion.activa %}
-                            <span class="status status-ok">Activa</span>
-                        {% else %}
-                            <span class="status status-off">Inactiva</span>
-                        {% endif %}
+                        <div>
+                            <h2 class="panel-title" style="font-size:1rem;">{{ instalacion.nombre }}</h2>
+                            <div class="t-muted" style="font-size:0.78rem;">{{ instalacion.ubicacion }}</div>
+                        </div>
+                        <span class="status {{ res.estado_css }}">{{ res.estado_label }}</span>
                     </div>
 
-                    <dl class="site-meta">
-                        <dt>Ubicación</dt>
-                        <dd>{{ instalacion.ubicacion }}</dd>
-                        <dt>Registrada</dt>
-                        <dd class="mb-0">{{ instalacion.fecha_creacion|date:"d M Y" }}</dd>
-                    </dl>
+                    <div class="row g-2 my-3 text-center">
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
+                                <div class="stat-label">Plantas</div>
+                                <div class="fw-semibold num" style="font-size:1.1rem;">{{ item.num_plantas }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
+                                <div class="stat-label">En rango</div>
+                                <div class="fw-semibold num" style="font-size:1.1rem;">
+                                    {% if res.porcentaje_en_rango is not None %}{{ res.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
+                                <div class="stat-label">Alertas</div>
+                                <div class="fw-semibold num {% if item.num_alertas > 0 %}t-danger{% endif %}" style="font-size:1.1rem;">{{ item.num_alertas }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if item.plantas_riesgo > 0 %}
+                    <div class="notice notice-warn mb-3" style="font-size:0.78rem;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>{{ item.plantas_riesgo }} planta(s) requieren atención.
+                    </div>
+                    {% else %}
+                    <div class="t-muted mb-3" style="font-size:0.78rem;">
+                        {{ res.recomendaciones.0 }}
+                    </div>
+                    {% endif %}
 
                     <div class="d-flex flex-column gap-2 mt-auto">
                         <a href="{% url 'detalle_instalacion' instalacion.pk %}" class="btn btn-primary-ap btn-sm w-100">
-                            <i class="bi bi-activity"></i>Ver sensores y alertas
+                            <i class="bi bi-activity"></i>Abrir panel en vivo
                         </a>
-                        <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm w-100">
-                            <i class="bi bi-clock-history"></i>Ver historial
-                        </a>
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'lista_plantas' instalacion.pk %}" class="btn btn-ghost btn-sm flex-fill">
+                                <i class="bi bi-flower1"></i>Plantas ({{ item.num_plantas }})
+                            </a>
+                            <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm flex-fill">
+                                <i class="bi bi-clock-history"></i>Historial
+                            </a>
+                        </div>
                         {% if perms.telemetria.change_instalacion or perms.telemetria.delete_instalacion %}
                         <div class="d-flex gap-2">
                             {% if perms.telemetria.change_instalacion %}
@@ -93,12 +156,19 @@
                 </div>
             </div>
         </div>
+        {% endwith %}
 
         {% empty %}
         <div class="col-12">
             <div class="panel">
                 <div class="panel-body text-center py-5">
-                    <p class="t-muted mb-3">No hay instalaciones de cultivo registradas.</p>
+                    <p class="t-muted mb-3">
+                        {% if es_admin %}
+                            No hay instalaciones de cultivo registradas.
+                        {% else %}
+                            Tu cuenta aún no tiene instalaciones asignadas. Solicita acceso a un Administrador.
+                        {% endif %}
+                    </p>
                     {% if perms.telemetria.add_instalacion %}
                     <a href="{% url 'crear_instalacion' %}" class="btn btn-primary-ap btn-sm"><i class="bi bi-plus-lg"></i>Crear la primera instalación</a>
                     {% endif %}

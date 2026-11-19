@@ -1,5 +1,7 @@
-from django.db import models
+from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
+from django.db import models
+from django.utils import timezone
 import uuid
 
 # ============================================================
@@ -86,6 +88,36 @@ SENSOR_CATALOGO = {
         'hardware_default': 'Sensor de Luz / Timer LDR-ESP32',
         'descripcion': 'Horas de iluminación recibidas al día (0 a 24 horas)',
     },
+    'humedad_sustrato': {
+        'nombre': 'Humedad de Sustrato / Raíz',
+        'unidad': '%',
+        'icono': '',
+        'min_val': 0.0,
+        'max_val': 100.0,
+        'step': '0.5',
+        'hardware_default': 'Sensor Capacitivo Sustrato v1.2',
+        'descripcion': 'Humedad retenida en la zona radicular de la planta (0% a 100%)',
+    },
+    'ph_sustrato': {
+        'nombre': 'pH de Raíz / Sustrato',
+        'unidad': 'pH',
+        'icono': '',
+        'min_val': 0.0,
+        'max_val': 14.0,
+        'step': '0.01',
+        'hardware_default': 'Sonda pH Sustrato Micro',
+        'descripcion': 'Acidez/alcalinidad medida directamente en la zona radicular (0 a 14)',
+    },
+    'temperatura_raiz': {
+        'nombre': 'Temperatura de Raíz',
+        'unidad': '°C',
+        'icono': '',
+        'min_val': 0.0,
+        'max_val': 50.0,
+        'step': '0.1',
+        'hardware_default': 'Sonda DS18B20 Raíz',
+        'descripcion': 'Temperatura en la zona de raíces de la planta',
+    },
     'temperatura': {
         'nombre': 'Temperatura General (Legado)',
         'unidad': '°C',
@@ -106,9 +138,54 @@ class Instalacion(models.Model):
     ubicacion = models.CharField(max_length=200)
     activa = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    encargados = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='instalaciones_asignadas',
+        help_text="Usuarios (Encargados de cultivo / Supervisores) autorizados para esta instalación",
+    )
 
     def __str__(self):
         return self.nombre
+
+
+class Planta(models.Model):
+    ETAPA_CHOICES = [
+        ('germinacion', 'Germinación'),
+        ('vegetativo', 'Crecimiento Vegetativo'),
+        ('floracion', 'Floración / Desarrollo'),
+        ('cosecha', 'Lista para Cosecha'),
+    ]
+    CICLO_DIAS_DEFAULT = 45
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='plantas')
+    codigo = models.CharField(max_length=80)
+    especie = models.CharField(max_length=100)
+    variedad = models.CharField(max_length=100, blank=True)
+    posicion = models.CharField(max_length=50, blank=True)
+    fecha_siembra = models.DateField(default=timezone.localdate)
+    etapa = models.CharField(max_length=20, choices=ETAPA_CHOICES, default='germinacion')
+    activa = models.BooleanField(default=True)
+    notas = models.TextField(blank=True)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['posicion', 'codigo']
+        unique_together = [('instalacion', 'codigo')]
+
+    def __str__(self):
+        return f"{self.codigo} ({self.especie}) - {self.instalacion.nombre}"
+
+    @property
+    def dias_desde_siembra(self):
+        return max(0, (timezone.localdate() - self.fecha_siembra).days)
+
+    @property
+    def dias_para_cosecha(self):
+        if self.etapa == 'cosecha':
+            return 0
+        return max(0, self.CICLO_DIAS_DEFAULT - self.dias_desde_siembra)
 
 
 class Sensor(models.Model):
@@ -122,17 +199,30 @@ class Sensor(models.Model):
         ('nivel_estanque', 'Nivel del Estanque (%)'),
         ('co2', 'Dióxido de Carbono - CO2 (ppm)'),
         ('fotoperiodo', 'Fotoperiodo (horas/día)'),
+        ('humedad_sustrato', 'Humedad de Sustrato / Raíz (%)'),
+        ('ph_sustrato', 'pH de Raíz / Sustrato (pH)'),
+        ('temperatura_raiz', 'Temperatura de Raíz (°C)'),
         ('temperatura', 'Temperatura General (Legado)'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='sensores')
+    planta = models.ForeignKey(
+        Planta,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='sensores',
+        help_text="Si está asignado, el sensor mide específicamente a esta planta; si es nulo, es sensor ambiental.",
+    )
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES)
     modelo_hardware = models.CharField(max_length=100)
     activo = models.BooleanField(default=True, help_text="Indica si el sensor está siendo monitoreado activamente")
 
     def __str__(self):
-        return f"{self.get_icono()} {self.get_tipo_display()} - {self.instalacion.nombre}"
+        if self.planta_id:
+            return f"{self.get_tipo_display()} - {self.planta.codigo} ({self.instalacion.nombre})"
+        return f"{self.get_tipo_display()} - {self.instalacion.nombre}"
 
     @property
     def info_catalogo(self):

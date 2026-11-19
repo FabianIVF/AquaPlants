@@ -70,6 +70,15 @@ PERFILES = {
     "fotoperiodo": {
         "normal": (12.0, 18.0), "anomalo": (20.0, 24.0), "paso": 0.25, "limite": (0, 24), "icono": "☀️",
     },
+    "humedad_sustrato": {
+        "normal": (55.0, 80.0), "anomalo": (20.0, 35.0), "paso": 1.2, "limite": (0, 100), "icono": "🪴",
+    },
+    "ph_sustrato": {
+        "normal": (5.5, 6.5), "anomalo": (7.4, 8.4), "paso": 0.05, "limite": (0, 14), "icono": "🧪",
+    },
+    "temperatura_raiz": {
+        "normal": (18.0, 24.0), "anomalo": (28.0, 33.0), "paso": 0.3, "limite": (0, 50), "icono": "🌡️",
+    },
 }
 PERFIL_GENERICO = {"normal": (0.0, 10.0), "anomalo": (50.0, 60.0), "paso": 0.5, "limite": (0, 1000), "icono": "📡"}
 
@@ -135,7 +144,8 @@ class SimuladorAquaBrain:
         print(f"🔄 Sincronizado: {len(instalaciones)} instalación(es), {len(self.sensores)} sensor(es) activo(s)")
         for s in self.sensores:
             icono = PERFILES.get(s["tipo"], PERFIL_GENERICO)["icono"]
-            print(f"   {icono}  {s.get('instalacion_nombre', ''):15} · {s['tipo']:16} [{s.get('unidad', '')}]")
+            destino = s.get("planta_codigo") or "Ambiental"
+            print(f"   {icono}  {s.get('instalacion_nombre', ''):15} · {destino:12} · {s['tipo']:16}")
         print()
 
     # ---------------------------------------------------------- generación
@@ -176,8 +186,11 @@ class SimuladorAquaBrain:
         if r.status_code == 201:
             d = r.json()
             estado = "🟢" if d.get("estado_conexion") else "🔴 FALLO"
-            linea = (f"  [201] {perfil['icono']}  {d.get('tipo_variable', sensor['tipo']):16} "
-                     f"{d.get('valor')} {d.get('unidad', '')}  {estado}")
+            etiqueta = f"{sensor.get('planta_codigo')} · " if sensor.get("planta_codigo") else ""
+            linea = (
+                f"  [201] {perfil['icono']}  {etiqueta}{d.get('tipo_variable', sensor['tipo']):16} "
+                f"{d.get('valor')} {d.get('unidad', '')}  {estado}"
+            )
             print(linea)
             alerta = d.get("alerta")
             if alerta:

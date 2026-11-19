@@ -1,5 +1,6 @@
 from django import forms
-from telemetria.models import Instalacion, ReglaAlerta, Sensor, SENSOR_CATALOGO
+from django.contrib.auth.models import Group, User
+from telemetria.models import Instalacion, Planta, ReglaAlerta, Sensor, SENSOR_CATALOGO
 
 # Opciones de sensores configurables para los huertos
 OPCIONES_SENSORES_CHOICES = [
@@ -59,8 +60,10 @@ class InstalacionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            # Si estamos editando, cargar los sensores que están actualmente activos
-            activos = list(self.instance.sensores.filter(activo=True).values_list('tipo', flat=True))
+            # Si estamos editando, cargar los sensores ambientales actualmente activos
+            activos = list(
+                self.instance.sensores.filter(activo=True, planta__isnull=True).values_list('tipo', flat=True)
+            )
             # Si tiene el sensor legado 'temperatura', asegurar que se reconozca
             if 'temperatura' in activos and 'temperatura_aire' not in activos:
                 activos.append('temperatura_aire')
@@ -77,7 +80,9 @@ class InstalacionForm(forms.ModelForm):
 
     def guardar_sensores(self, instalacion):
         seleccionados = set(self.cleaned_data.get('sensores_seleccionados', []))
-        sensores_actuales = {s.tipo: s for s in instalacion.sensores.all()}
+        sensores_actuales = {
+            s.tipo: s for s in instalacion.sensores.filter(planta__isnull=True)
+        }
 
         # El sensor legado 'temperatura' se reemplaza por temperatura_aire/agua:
         # se desactiva (conservando su historial) para no duplicar lecturas.
@@ -86,8 +91,9 @@ class InstalacionForm(forms.ModelForm):
             legado.activo = False
             legado.save(update_fields=['activo'])
 
+        tipos_planta = {'humedad_sustrato', 'ph_sustrato', 'temperatura_raiz'}
         for tipo, meta in SENSOR_CATALOGO.items():
-            if tipo == 'temperatura':
+            if tipo == 'temperatura' or tipo in tipos_planta:
                 continue
             if tipo in seleccionados:
                 if tipo in sensores_actuales:
@@ -98,6 +104,7 @@ class InstalacionForm(forms.ModelForm):
                 else:
                     Sensor.objects.create(
                         instalacion=instalacion,
+                        planta=None,
                         tipo=tipo,
                         modelo_hardware=meta['hardware_default'],
                         activo=True
@@ -155,7 +162,11 @@ class ReglaAlertaForm(forms.ModelForm):
             self.fields['sensor'].queryset = base_qs.exclude(id__in=sensores_con_regla)
             self.fields['sensor'].empty_label = "--- Selecciona un sensor activo de este huerto ---"
             self.fields['sensor'].label_from_instance = (
-                lambda s: f"{s.get_tipo_display()} — ({s.modelo_hardware})"
+                lambda s: (
+                    f"[{s.planta.codigo}] {s.get_tipo_display()} — ({s.modelo_hardware})"
+                    if s.planta_id
+                    else f"[Ambiental] {s.get_tipo_display()} — ({s.modelo_hardware})"
+                )
             )
 
     def clean(self):
@@ -184,8 +195,8 @@ class ReglaAlertaForm(forms.ModelForm):
 
         tipo = sensor.tipo
 
-        # 1. Validación estricta de Porcentaje: 0 a 100% (Humedad y Nivel del Estanque)
-        if tipo in ['humedad', 'nivel_estanque']:
+        # 1. Validación estricta de Porcentaje: 0 a 100%
+        if tipo in ['humedad', 'nivel_estanque', 'humedad_sustrato']:
             for campo, valor, nombre_lim in [('limite_minimo', minimo, 'mínimo'), ('limite_maximo', maximo, 'máximo')]:
                 if valor is not None:
                     if valor < 0.0 or valor > 100.0:
@@ -196,7 +207,7 @@ class ReglaAlertaForm(forms.ModelForm):
                         )
 
         # 2. Validación estricta de pH: 0.0 a 14.0
-        elif tipo == 'ph':
+        elif tipo in ['ph', 'ph_sustrato']:
             for campo, valor, nombre_lim in [('limite_minimo', minimo, 'mínimo'), ('limite_maximo', maximo, 'máximo')]:
                 if valor is not None:
                     if valor < 0.0 or valor > 14.0:
@@ -236,8 +247,8 @@ class ReglaAlertaForm(forms.ModelForm):
                             f"El caudal de agua no puede ser negativo (se ingresó {valor} L/min)."
                         )
 
-        # 6. Validación de Temperaturas (Solución y Aire): 0.0°C a 60.0°C (rango seguro de cultivo)
-        elif tipo in ['temperatura_agua', 'temperatura_aire', 'temperatura']:
+        # 6. Validación de Temperaturas (Solución, Aire y Raíz): 0.0°C a 60.0°C
+        elif tipo in ['temperatura_agua', 'temperatura_aire', 'temperatura', 'temperatura_raiz']:
             for campo, valor, nombre_lim in [('limite_minimo', minimo, 'mínimo'), ('limite_maximo', maximo, 'máximo')]:
                 if valor is not None:
                     if valor < 0.0 or valor > 60.0:
@@ -248,3 +259,182 @@ class ReglaAlertaForm(forms.ModelForm):
                         )
 
         return cleaned_data
+
+
+OPCIONES_SENSORES_PLANTA = [
+    ('humedad_sustrato', 'Humedad de Sustrato / Raíz (%)'),
+    ('ph_sustrato', 'pH de Raíz / Sustrato (pH)'),
+    ('temperatura_raiz', 'Temperatura de Raíz (°C)'),
+]
+
+
+class PlantaForm(forms.ModelForm):
+    sensores_planta = forms.MultipleChoiceField(
+        choices=OPCIONES_SENSORES_PLANTA,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        required=False,
+        label="Sensores Propios de la Planta",
+        help_text="Cada sensor seleccionado generará y enviará lecturas individuales para esta planta.",
+    )
+
+    class Meta:
+        model = Planta
+        fields = ['codigo', 'especie', 'variedad', 'posicion', 'fecha_siembra', 'etapa', 'activa', 'notas']
+        labels = {
+            'codigo': 'Código o Nombre de la Planta',
+            'especie': 'Especie',
+            'variedad': 'Variedad',
+            'posicion': 'Posición en torre / bancal',
+            'fecha_siembra': 'Fecha de siembra',
+            'etapa': 'Etapa de crecimiento',
+            'activa': 'Planta activa en monitoreo',
+            'notas': 'Notas agronómicas',
+        }
+        widgets = {
+            'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. T1-N2-01'}),
+            'especie': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Lechuga Costina'}),
+            'variedad': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Romana / Hidropónica'}),
+            'posicion': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Torre 1 · Nivel 2'}),
+            'fecha_siembra': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'etapa': forms.Select(attrs={'class': 'form-select'}),
+            'activa': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notas': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, instalacion=None, **kwargs):
+        self.instalacion_target = instalacion
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            activos = list(self.instance.sensores.filter(activo=True).values_list('tipo', flat=True))
+            self.fields['sensores_planta'].initial = activos
+        else:
+            self.fields['sensores_planta'].initial = ['humedad_sustrato', 'ph_sustrato', 'temperatura_raiz']
+
+    def clean_codigo(self):
+        codigo = self.cleaned_data['codigo'].strip()
+        instalacion = self.instalacion_target or getattr(self.instance, 'instalacion', None)
+        if instalacion:
+            qs = Planta.objects.filter(instalacion=instalacion, codigo__iexact=codigo)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError(f'Ya existe una planta con el código "{codigo}" en esta instalación.')
+        return codigo
+
+    def save(self, commit=True):
+        planta = super().save(commit=False)
+        if self.instalacion_target and not planta.instalacion_id:
+            planta.instalacion = self.instalacion_target
+        if commit:
+            planta.save()
+            self._guardar_sensores_planta(planta)
+        return planta
+
+    def _guardar_sensores_planta(self, planta):
+        seleccionados = set(self.cleaned_data.get('sensores_planta', []))
+        actuales = {s.tipo: s for s in planta.sensores.all()}
+        for tipo, _ in OPCIONES_SENSORES_PLANTA:
+            meta = SENSOR_CATALOGO[tipo]
+            if tipo in seleccionados:
+                if tipo in actuales:
+                    s = actuales[tipo]
+                    if not s.activo:
+                        s.activo = True
+                        s.save(update_fields=['activo'])
+                else:
+                    Sensor.objects.create(
+                        instalacion=planta.instalacion,
+                        planta=planta,
+                        tipo=tipo,
+                        modelo_hardware=meta['hardware_default'],
+                        activo=True,
+                    )
+            elif tipo in actuales and actuales[tipo].activo:
+                s = actuales[tipo]
+                s.activo = False
+                s.save(update_fields=['activo'])
+
+
+ROLES_WEB_CHOICES = [
+    ('Encargado de cultivo', 'Encargado de cultivo (Gestiona plantas y reglas en sus instalaciones)'),
+    ('Supervisor', 'Supervisor (Solo lectura en sus instalaciones asignadas)'),
+    ('Administrador', 'Administrador (Acceso total al sistema y usuarios)'),
+]
+
+
+class UsuarioForm(forms.ModelForm):
+    password = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'autocomplete': 'new-password'}),
+        label='Contraseña',
+        help_text='Obligatoria al crear un usuario. Al editar, déjala vacía para mantener la actual.',
+    )
+    rol = forms.ChoiceField(
+        choices=ROLES_WEB_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Rol y Nivel de Permisos',
+    )
+    instalaciones = forms.ModelMultipleChoiceField(
+        queryset=Instalacion.objects.all().order_by('nombre'),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        required=False,
+        label='Instalaciones Asignadas',
+        help_text='Selecciona a qué instalaciones tendrá acceso este usuario (Encargado / Supervisor).',
+    )
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email', 'is_active']
+        labels = {
+            'username': 'Nombre de usuario',
+            'first_name': 'Nombre',
+            'last_name': 'Apellido',
+            'email': 'Correo electrónico',
+            'is_active': 'Cuenta activa',
+        }
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. juan.perez'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'usuario@aquaplants.cl'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            grupo = self.instance.groups.filter(
+                name__in=['Administrador', 'Encargado de cultivo', 'Supervisor']
+            ).first()
+            if grupo:
+                self.fields['rol'].initial = grupo.name
+            elif self.instance.is_superuser:
+                self.fields['rol'].initial = 'Administrador'
+            self.fields['instalaciones'].initial = list(
+                self.instance.instalaciones_asignadas.values_list('id', flat=True)
+            )
+        else:
+            self.fields['password'].required = True
+
+    def clean_password(self):
+        pwd = self.cleaned_data.get('password', '')
+        if not self.instance.pk and not pwd:
+            raise forms.ValidationError('Debes ingresar una contraseña para el nuevo usuario.')
+        if pwd and len(pwd) < 6:
+            raise forms.ValidationError('La contraseña debe tener al menos 6 caracteres.')
+        return pwd
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        pwd = self.cleaned_data.get('password')
+        if pwd:
+            user.set_password(pwd)
+        if commit:
+            user.save()
+            rol_nombre = self.cleaned_data['rol']
+            grupo, _ = Group.objects.get_or_create(name=rol_nombre)
+            user.groups.set([grupo])
+            instalaciones = self.cleaned_data.get('instalaciones')
+            if instalaciones is not None:
+                user.instalaciones_asignadas.set(instalaciones)
+        return user

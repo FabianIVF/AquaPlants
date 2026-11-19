@@ -11,7 +11,8 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 from rest_framework import status
 
-from telemetria.models import Instalacion, Sensor, Medicion, ReglaAlerta, AlertaGenerada
+from telemetria.models import Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
+from dashboard.analytics import resumen_sensores
 from dashboard.forms import ReglaAlertaForm, InstalacionForm
 
 
@@ -335,6 +336,7 @@ class SeguridadPunto6TestCase(TestCase):
         """
         call_command('setup_roles', stdout=StringIO())
         instalacion = Instalacion.objects.create(nombre="Huerto RBAC", ubicacion="Sector Test")
+        instalacion_ajena = Instalacion.objects.create(nombre="Huerto Ajeno", ubicacion="Sector X")
 
         admin_grupo = User.objects.create_user(username='admin_grupo', password='Pass1234!')
         admin_grupo.groups.add(Group.objects.get(name='Administrador'))
@@ -345,23 +347,29 @@ class SeguridadPunto6TestCase(TestCase):
         supervisor = User.objects.create_user(username='sup_rbac', password='Pass1234!')
         supervisor.groups.add(Group.objects.get(name='Supervisor'))
 
+        instalacion.encargados.add(cultivador, supervisor)
+
         client = Client()
 
-        # Administrador por grupo accede a instalaciones y reglas
+        # Administrador por grupo accede a instalaciones y reglas (propias y ajenas)
         client.login(username='admin_grupo', password='Pass1234!')
         self.assertEqual(client.get('/dashboard/instalacion/crear/').status_code, 200)
         self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/regla/crear/').status_code, 200)
+        self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion_ajena.pk}/').status_code, 200)
 
-        # Encargado de cultivo gestiona reglas pero NO huertos
+        # Encargado de cultivo gestiona reglas/plantas en SU instalación, pero NO huertos ni instalaciones ajenas
         client.login(username='cultivador_test', password='Pass1234!')
         self.assertEqual(client.get('/dashboard/instalacion/crear/').status_code, 403)
         self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/editar/').status_code, 403)
         self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/regla/crear/').status_code, 200)
+        self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion_ajena.pk}/').status_code, 403)
 
-        # Supervisor es estrictamente solo lectura
+        # Supervisor es estrictamente solo lectura y solo en sus instalaciones
         client.login(username='sup_rbac', password='Pass1234!')
         self.assertEqual(client.get('/dashboard/instalacion/crear/').status_code, 403)
         self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/regla/crear/').status_code, 403)
+        self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/').status_code, 200)
+        self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion_ajena.pk}/').status_code, 403)
 
 
 class DashboardLiveTelemetriaTestCase(TestCase):
@@ -371,7 +379,9 @@ class DashboardLiveTelemetriaTestCase(TestCase):
     """
     def setUp(self):
         self.client = Client()
+        grupo_admin, _ = Group.objects.get_or_create(name='Administrador')
         self.admin_user = User.objects.create_user(username='admin_live', password='Password123!')
+        self.admin_user.groups.add(grupo_admin)
         self.instalacion = Instalacion.objects.create(nombre="Huerto Live", ubicacion="Lab 1")
         self.sensor = Sensor.objects.create(
             instalacion=self.instalacion,
@@ -458,3 +468,110 @@ class DashboardLiveTelemetriaTestCase(TestCase):
         self.assertEqual(resp_hist.status_code, 200)
         self.assertEqual(len(resp_hist.context['historico']), 100)
         self.assertLess(duracion, 2.0)
+
+
+class UsuariosYAsignacionTestCase(TestCase):
+    """
+    Pruebas del CRUD web de usuarios y aislamiento por instalaciones asignadas.
+    """
+    def setUp(self):
+        call_command('setup_roles', stdout=StringIO())
+        self.inst_a = Instalacion.objects.create(nombre="Invernadero Alfa", ubicacion="Sector 1")
+        self.inst_b = Instalacion.objects.create(nombre="Invernadero Beta", ubicacion="Sector 2")
+
+        self.admin = User.objects.create_user(username='admin_web', password='Pass1234!')
+        self.admin.groups.add(Group.objects.get(name='Administrador'))
+        self.client = Client()
+
+    def test_admin_puede_crear_usuario_y_asignar_instalaciones(self):
+        """El administrador crea un Encargado de cultivo asignado solo a Invernadero Alfa."""
+        self.client.login(username='admin_web', password='Pass1234!')
+        resp = self.client.post('/dashboard/usuarios/crear/', {
+            'username': 'cultivador_alfa',
+            'first_name': 'Carlos',
+            'last_name': 'Soto',
+            'email': 'carlos@aquaplants.cl',
+            'password': 'ClaveSegura123',
+            'rol': 'Encargado de cultivo',
+            'instalaciones': [str(self.inst_a.pk)],
+            'is_active': True,
+        })
+        self.assertEqual(resp.status_code, 302)
+        nuevo = User.objects.get(username='cultivador_alfa')
+        self.assertTrue(nuevo.groups.filter(name='Encargado de cultivo').exists())
+        self.assertIn(self.inst_a, nuevo.instalaciones_asignadas.all())
+        self.assertNotIn(self.inst_b, nuevo.instalaciones_asignadas.all())
+
+    def test_encargado_no_accede_a_crud_usuarios_ni_instalacion_ajena(self):
+        """Encargado de cultivo recibe 403 en gestión de usuarios y en instalaciones no asignadas."""
+        encargado = User.objects.create_user(username='enc_a', password='Pass1234!')
+        encargado.groups.add(Group.objects.get(name='Encargado de cultivo'))
+        self.inst_a.encargados.add(encargado)
+
+        self.client.login(username='enc_a', password='Pass1234!')
+        self.assertEqual(self.client.get('/dashboard/usuarios/').status_code, 403)
+        self.assertEqual(self.client.get(f'/dashboard/instalacion/{self.inst_a.pk}/').status_code, 200)
+        self.assertEqual(self.client.get(f'/dashboard/instalacion/{self.inst_b.pk}/').status_code, 403)
+
+
+class PlantasYAnaliticaTestCase(TestCase):
+    """
+    Pruebas del CRUD de plantas por instalación, sensores propios,
+    endpoint en vivo de planta y recomendaciones automáticas para el cultivador.
+    """
+    def setUp(self):
+        call_command('setup_roles', stdout=StringIO())
+        self.instalacion = Instalacion.objects.create(nombre="Torre Central", ubicacion="Nave 1")
+        self.cultivador = User.objects.create_user(username='cult_plantas', password='Pass1234!')
+        self.cultivador.groups.add(Group.objects.get(name='Encargado de cultivo'))
+        self.instalacion.encargados.add(self.cultivador)
+        self.client = Client()
+
+    def test_crear_planta_genera_sensores_propios(self):
+        """Registrar una planta desde la web crea sus sensores individuales vinculados."""
+        self.client.login(username='cult_plantas', password='Pass1234!')
+        resp = self.client.post(f'/dashboard/instalacion/{self.instalacion.pk}/plantas/crear/', {
+            'codigo': 'T1-A01',
+            'especie': 'Lechuga Costina',
+            'variedad': 'Romana',
+            'posicion': 'Torre 1 · Nivel 1',
+            'fecha_siembra': str(timezone.localdate() - timedelta(days=10)),
+            'etapa': 'vegetativo',
+            'activa': True,
+            'notas': 'Buen desarrollo radicular',
+            'sensores_planta': ['humedad_sustrato', 'ph_sustrato', 'temperatura_raiz'],
+        })
+        self.assertEqual(resp.status_code, 302)
+        planta = Planta.objects.get(instalacion=self.instalacion, codigo='T1-A01')
+        self.assertEqual(planta.dias_desde_siembra, 10)
+        self.assertEqual(planta.sensores.filter(activo=True).count(), 3)
+
+    def test_telemetria_live_planta_y_recomendaciones(self):
+        """El endpoint /plantas/<id>/live/ retorna datos propios, estado crítico y recomendación simple."""
+        planta = Planta.objects.create(
+            instalacion=self.instalacion,
+            codigo='T1-B02',
+            especie='Albahaca',
+            fecha_siembra=timezone.localdate() - timedelta(days=15),
+            etapa='vegetativo',
+        )
+        sensor_ph = Sensor.objects.create(
+            instalacion=self.instalacion,
+            planta=planta,
+            tipo='ph_sustrato',
+            modelo_hardware='Sonda pH Sustrato',
+            activo=True,
+        )
+        Medicion.objects.create(sensor=sensor_ph, valor=8.20, estado_conexion=True)
+
+        resumen = resumen_sensores(planta.sensores.filter(activo=True))
+        self.assertEqual(resumen['estado'], 'critico')
+        self.assertEqual(resumen['porcentaje_en_rango'], 0)
+        self.assertTrue(any('pH' in r for r in resumen['recomendaciones']))
+
+        self.client.login(username='cult_plantas', password='Pass1234!')
+        resp = self.client.get(f'/dashboard/instalacion/{self.instalacion.pk}/plantas/{planta.pk}/live/')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['resumen']['estado'], 'critico')
+        self.assertEqual(data['sensores']['ph_sustrato']['mediciones'][0]['valor'], 8.2)

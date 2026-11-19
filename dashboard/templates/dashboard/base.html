@@ -64,7 +64,38 @@
             display: flex; align-items: center; justify-content: space-between;
             height: 58px; gap: 1rem;
         }
+        .app-nav-left { display: flex; align-items: center; gap: 1.5rem; }
+        .app-nav-links { display: flex; align-items: center; gap: 0.25rem; }
+        .app-nav-link {
+            font-size: 0.84rem; font-weight: 500; color: var(--ap-muted);
+            padding: 0.35rem 0.7rem; border-radius: 6px; transition: all .15s;
+        }
+        .app-nav-link:hover { color: var(--ap-text); background: var(--ap-surface-2); }
+        .app-nav-link.active { color: var(--ap-text); background: var(--ap-surface-2); }
         .app-brand img { height: 34px; display: block; }
+
+        /* ---------- Submenú de instalación ---------- */
+        .inst-header { margin-bottom: 1.25rem; }
+        .inst-crumb { font-size: 0.78rem; color: var(--ap-muted); margin-bottom: 0.35rem; }
+        .inst-crumb a { color: var(--ap-muted); }
+        .inst-crumb a:hover { color: var(--ap-text); }
+        .inst-tabs {
+            display: flex; flex-wrap: wrap; gap: 0.35rem;
+            border-bottom: 1px solid var(--ap-border); margin-bottom: 1.5rem; padding-bottom: 0.6rem;
+        }
+        .inst-tab {
+            display: inline-flex; align-items: center; gap: 0.45rem;
+            padding: 0.45rem 0.85rem; border-radius: 6px; font-size: 0.84rem; font-weight: 500;
+            color: var(--ap-muted); border: 1px solid transparent; transition: all .15s;
+        }
+        .inst-tab:hover { color: var(--ap-text); background: var(--ap-surface); }
+        .inst-tab.active {
+            color: var(--ap-text); background: var(--ap-surface);
+            border-color: var(--ap-border-strong); box-shadow: inset 0 -2px 0 var(--ap-accent);
+        }
+        .rec-list { margin: 0; padding-left: 1.1rem; font-size: 0.84rem; }
+        .rec-list li { margin-bottom: 0.25rem; }
+        .rec-list li:last-child { margin-bottom: 0; }
         .app-nav-right { display: flex; align-items: center; gap: 1rem; }
         .app-user { font-size: 0.8rem; color: var(--ap-muted); }
         .app-user strong { color: var(--ap-text); font-weight: 500; }
@@ -239,9 +270,21 @@
 {% block navbar %}
     <header class="app-nav">
         <div class="wrap app-nav-inner">
-            <a class="app-brand" href="{% url 'inicio_dashboard' %}">
-                <img src="{% static 'Icono.png' %}" alt="AquaPlants">
-            </a>
+            <div class="app-nav-left">
+                <a class="app-brand" href="{% url 'inicio_dashboard' %}">
+                    <img src="{% static 'Icono.png' %}" alt="AquaPlants">
+                </a>
+                <nav class="app-nav-links">
+                    <a href="{% url 'inicio_dashboard' %}" class="app-nav-link {% if request.resolver_match.url_name == 'inicio_dashboard' %}active{% endif %}">
+                        <i class="bi bi-grid me-1"></i>Monitor
+                    </a>
+                    {% if request.user.is_superuser or perms.auth.view_user %}
+                    <a href="{% url 'lista_usuarios' %}" class="app-nav-link {% if 'usuario' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="bi bi-people me-1"></i>Usuarios
+                    </a>
+                    {% endif %}
+                </nav>
+            </div>
             <div class="app-nav-right">
                 {% block nav_actions %}{% endblock %}
                 <span class="app-user">Sesión: <strong>{{ request.user.username }}</strong></span>

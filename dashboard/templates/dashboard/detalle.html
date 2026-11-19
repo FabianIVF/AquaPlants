@@ -16,18 +16,40 @@
 {% endblock %}
 
 {% block content %}
-    <!-- Encabezado -->
-    <div class="page-head">
-        <div>
-            <h1><span class="live-dot"></span>Panel en vivo &middot; <span class="t-accent">{{ instalacion.nombre }}</span></h1>
-            <p>Actualización automática cada <strong id="segundos-restantes" class="num">5</strong> s &middot; {{ instalacion.ubicacion }}</p>
-        </div>
-        <div class="page-actions">
-            <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm"><i class="bi bi-clock-history"></i>Historial</a>
-            {% if perms.telemetria.change_instalacion %}
-            <a href="{% url 'editar_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm"><i class="bi bi-pencil"></i>Editar instalación</a>
-            {% endif %}
-            <a href="{% url 'inicio_dashboard' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i>Volver al monitor</a>
+    {% include "dashboard/_instalacion_nav.html" %}
+
+    <!-- Diagnóstico e información útil para el cultivador -->
+    <div class="panel mb-4">
+        <div class="panel-body">
+            <div class="row g-3 align-items-center">
+                <div class="col-6 col-md-2">
+                    <div class="stat-label mb-1">Estado general</div>
+                    <span id="diag-estado" class="status {{ resumen.estado_css }}">{{ resumen.estado_label }}</span>
+                    <div class="stat-note mt-2">Refresco: <strong id="segundos-restantes" class="num">5</strong>s</div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="stat-label">En rango</div>
+                    <div id="diag-pct" class="fw-semibold num" style="font-size:1.35rem;">
+                        {% if resumen.porcentaje_en_rango is not None %}{{ resumen.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
+                    </div>
+                    <div class="stat-note">Tendencia: <span id="diag-tendencia">{{ resumen.tendencia }}</span></div>
+                </div>
+                <div class="col-12 col-md-5">
+                    <div class="stat-label mb-1">Recomendaciones prácticas</div>
+                    <ul id="diag-recs" class="rec-list">
+                        {% for rec in resumen.recomendaciones %}
+                        <li>{{ rec }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="col-12 col-md-3 text-md-end">
+                    <div class="stat-label mb-1">Plantas en este sistema</div>
+                    <div class="fw-semibold num mb-2" style="font-size:1.15rem;">{{ num_plantas }} registrada(s)</div>
+                    <a href="{% url 'lista_plantas' instalacion.pk %}" class="btn btn-ghost btn-sm">
+                        <i class="bi bi-flower1"></i>Ver plantas y sensores
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -378,6 +400,21 @@ async function fetchDatos() {
         }
         actualizarTabla(data.sensores);
         actualizarAlertas(data.alertas, data.num_alertas);
+        if (data.resumen) {
+            const elEstado = document.getElementById('diag-estado');
+            if (elEstado) {
+                elEstado.className = `status ${data.resumen.estado_css}`;
+                elEstado.textContent = data.resumen.estado_label;
+            }
+            const elPct = document.getElementById('diag-pct');
+            if (elPct) elPct.textContent = data.resumen.porcentaje_en_rango !== null ? `${data.resumen.porcentaje_en_rango}%` : '—';
+            const elTend = document.getElementById('diag-tendencia');
+            if (elTend) elTend.textContent = data.resumen.tendencia;
+            const elRecs = document.getElementById('diag-recs');
+            if (elRecs && data.resumen.recomendaciones) {
+                elRecs.innerHTML = data.resumen.recomendaciones.map(r => `<li>${r}</li>`).join('');
+            }
+        }
 
     } catch (err) {
         console.warn('Error al obtener datos en vivo:', err);

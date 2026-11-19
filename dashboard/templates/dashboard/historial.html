@@ -3,17 +3,7 @@
 {% block title %}Historial — {{ instalacion.nombre }}{% endblock %}
 
 {% block content %}
-    <!-- Encabezado -->
-    <div class="page-head">
-        <div>
-            <h1>Historial &middot; <span class="t-accent">{{ instalacion.nombre }}</span></h1>
-            <p>Estados actuales y registro histórico de mediciones &middot; {{ instalacion.ubicacion }}</p>
-        </div>
-        <div class="page-actions">
-            <a href="{% url 'detalle_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm"><i class="bi bi-activity"></i>Ver en vivo</a>
-            <a href="{% url 'inicio_dashboard' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i>Volver</a>
-        </div>
-    </div>
+    {% include "dashboard/_instalacion_nav.html" %}
 
     <!-- Resumen -->
     <div class="row g-3 mb-4">
@@ -63,7 +53,9 @@
                 {% with sensor=item.sensor med=item.ultima_medicion %}
                 <div class="col-6 col-md-4 col-xl-3">
                     <div class="panel stat" style="background:var(--ap-surface-2);">
-                        <div class="metric-label">{{ sensor.get_tipo_display }}</div>
+                        <div class="metric-label">
+                            {% if sensor.planta %}[{{ sensor.planta.codigo }}] {% endif %}{{ sensor.get_tipo_display }}
+                        </div>
                         {% if med %}
                             <div class="d-flex align-items-baseline gap-2 mt-2">
                                 <div class="metric-value">{{ med.valor }}</div>
@@ -128,7 +120,11 @@
                     {% for m in historico %}
                     <tr>
                         <td class="t-muted">{{ m.timestamp|date:"d/m/Y H:i:s" }}</td>
-                        <td><span class="tag">{{ m.sensor.get_tipo_display }}</span></td>
+                        <td>
+                            <span class="tag">
+                                {% if m.sensor.planta %}{{ m.sensor.planta.codigo }} &middot; {% endif %}{{ m.sensor.get_tipo_display }}
+                            </span>
+                        </td>
                         <td><strong>{{ m.valor }}</strong></td>
                         <td class="t-muted">{{ m.sensor.get_unidad }}</td>
                         <td>

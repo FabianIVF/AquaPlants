@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
-from .models import Instalacion, Sensor, Medicion, ReglaAlerta, AlertaGenerada
-from .serializers import InstalacionSerializer, SensorSerializer, MedicionSerializer
+from .models import Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
+from .serializers import InstalacionSerializer, PlantaSerializer, SensorSerializer, MedicionSerializer
 
 
 class InstalacionViewSet(viewsets.ModelViewSet):
@@ -12,22 +12,42 @@ class InstalacionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
 
 
+class PlantaViewSet(viewsets.ModelViewSet):
+    serializer_class = PlantaSerializer
+    permission_classes = [IsAuthenticated, DjangoModelPermissions]
+    queryset = Planta.objects.select_related('instalacion').all()
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        instalacion = self.request.query_params.get('instalacion')
+        activa = self.request.query_params.get('activa')
+        if instalacion:
+            qs = qs.filter(instalacion_id=instalacion)
+        if activa is not None:
+            qs = qs.filter(activa=activa.lower() in ('true', '1', 'si'))
+        return qs
+
+
 class SensorViewSet(viewsets.ModelViewSet):
     serializer_class = SensorSerializer
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
-    queryset = Sensor.objects.select_related('instalacion').all()
+    queryset = Sensor.objects.select_related('instalacion', 'planta').all()
 
     def get_queryset(self):
         """
         Filtros opcionales por query string (usados por el simulador IoT):
           ?instalacion=<uuid>   -> sensores de una instalación
+          ?planta=<uuid>        -> sensores de una planta específica
           ?activo=true|false    -> solo sensores monitoreados / desactivados
         """
         qs = super().get_queryset()
         instalacion = self.request.query_params.get('instalacion')
+        planta = self.request.query_params.get('planta')
         activo = self.request.query_params.get('activo')
         if instalacion:
             qs = qs.filter(instalacion_id=instalacion)
+        if planta:
+            qs = qs.filter(planta_id=planta)
         if activo is not None:
             qs = qs.filter(activo=activo.lower() in ('true', '1', 'si'))
         return qs
@@ -66,6 +86,7 @@ class MedicionViewSet(viewsets.ModelViewSet):
         # Las unidades con símbolo pegado (°C, %) no llevan espacio
         unidad_str = unidad if unidad.startswith(('°', '%')) else f" {unidad}"
         nombre_sensor = sensor.info_catalogo.get('nombre', sensor.get_tipo_display())
+        prefijo = f"[{sensor.planta.codigo}] " if sensor.planta_id else ""
 
         alertas = []
         for regla in reglas:
@@ -73,13 +94,13 @@ class MedicionViewSet(viewsets.ModelViewSet):
 
             if regla.limite_maximo is not None and medicion_guardada.valor > regla.limite_maximo:
                 mensaje_alerta = (
-                    f"¡ALERTA ROJA! {nombre_sensor} ALTO: {medicion_guardada.valor}{unidad_str} "
+                    f"{prefijo}¡ALERTA ROJA! {nombre_sensor} ALTO: {medicion_guardada.valor}{unidad_str} "
                     f"(Límite: {regla.limite_maximo}{unidad_str})"
                 )
 
             elif regla.limite_minimo is not None and medicion_guardada.valor < regla.limite_minimo:
                 mensaje_alerta = (
-                    f"¡ALERTA AZUL! {nombre_sensor} BAJO: {medicion_guardada.valor}{unidad_str} "
+                    f"{prefijo}¡ALERTA AZUL! {nombre_sensor} BAJO: {medicion_guardada.valor}{unidad_str} "
                     f"(Límite: {regla.limite_minimo}{unidad_str})"
                 )
 

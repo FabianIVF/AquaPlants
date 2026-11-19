@@ -3,7 +3,11 @@
 {% block title %}{{ titulo }} — AquaPlants{% endblock %}
 
 {% block content %}
-<div class="mx-auto" style="max-width: 720px;">
+{% if instalacion %}
+    {% include "dashboard/_instalacion_nav.html" %}
+{% endif %}
+
+<div class="mx-auto" style="max-width: 740px;">
     <div class="panel">
         <div class="panel-head">
             <h1 class="panel-title" style="font-size:1.05rem;">{{ titulo }}</h1>
@@ -17,12 +21,12 @@
 
                 {% for field in form %}
                 <div class="mb-3">
-                    {% if field.name == "sensores_seleccionados" %}
+                    {% if field.name == "sensores_seleccionados" or field.name == "sensores_planta" or field.name == "instalaciones" %}
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <label class="form-label mb-0">{{ field.label }}</label>
                             <div class="d-flex gap-1">
-                                <button type="button" class="btn btn-ghost btn-sm" style="padding:.15rem .55rem;font-size:.75rem;" onclick="document.querySelectorAll('input[name=sensores_seleccionados]').forEach(el => el.checked = true);">Marcar todos</button>
-                                <button type="button" class="btn btn-ghost btn-sm" style="padding:.15rem .55rem;font-size:.75rem;" onclick="document.querySelectorAll('input[name=sensores_seleccionados]').forEach(el => el.checked = false);">Desmarcar todos</button>
+                                <button type="button" class="btn btn-ghost btn-sm" style="padding:.15rem .55rem;font-size:.75rem;" onclick="document.querySelectorAll('input[name={{ field.name }}]').forEach(el => el.checked = true);">Marcar todos</button>
+                                <button type="button" class="btn btn-ghost btn-sm" style="padding:.15rem .55rem;font-size:.75rem;" onclick="document.querySelectorAll('input[name={{ field.name }}]').forEach(el => el.checked = false);">Desmarcar todos</button>
                             </div>
                         </div>
                         {% if field.help_text %}
@@ -53,7 +57,7 @@
                         <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
                         {% if field.field.queryset.count == 0 %}
                             <div class="notice notice-warn mb-2">
-                                <strong>Sin sensores disponibles.</strong> Todos los sensores activos de este huerto ya tienen una regla configurada, o no hay sensores activos. Puedes habilitar más desde Editar instalación.
+                                <strong>Sin sensores disponibles.</strong> Todos los sensores activos de este huerto ya tienen una regla configurada, o no hay sensores activos.
                             </div>
                         {% endif %}
                         {{ field }}
@@ -62,7 +66,7 @@
                         {{ field }}
                     {% endif %}
 
-                    {% if field.help_text and field.name != "sensores_seleccionados" %}
+                    {% if field.help_text and field.name != "sensores_seleccionados" and field.name != "sensores_planta" and field.name != "instalaciones" %}
                         <div class="form-text">{{ field.help_text }}</div>
                     {% endif %}
 

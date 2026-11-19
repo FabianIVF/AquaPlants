@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Instalacion, Sensor, Medicion
+from .models import Instalacion, Planta, Sensor, Medicion
 
 
 class InstalacionSerializer(serializers.ModelSerializer):  # Serializador REST para Instalacion
@@ -9,14 +9,30 @@ class InstalacionSerializer(serializers.ModelSerializer):  # Serializador REST p
         read_only_fields = ['id', 'fecha_creacion']
 
 
+class PlantaSerializer(serializers.ModelSerializer):
+    instalacion_nombre = serializers.CharField(source='instalacion.nombre', read_only=True)
+
+    class Meta:
+        model = Planta
+        fields = [
+            'id', 'instalacion', 'instalacion_nombre', 'codigo', 'especie',
+            'variedad', 'posicion', 'fecha_siembra', 'etapa', 'activa', 'notas',
+        ]
+        read_only_fields = ['id']
+
+
 class SensorSerializer(serializers.ModelSerializer):
     # Campos informativos de solo lectura (útiles para el simulador IoT)
     unidad = serializers.CharField(source='get_unidad', read_only=True)
     instalacion_nombre = serializers.CharField(source='instalacion.nombre', read_only=True)
+    planta_codigo = serializers.CharField(source='planta.codigo', read_only=True, default=None)
 
     class Meta:
         model = Sensor
-        fields = ['id', 'instalacion', 'instalacion_nombre', 'tipo', 'modelo_hardware', 'activo', 'unidad']
+        fields = [
+            'id', 'instalacion', 'instalacion_nombre', 'planta', 'planta_codigo',
+            'tipo', 'modelo_hardware', 'activo', 'unidad',
+        ]
         read_only_fields = ['id']
 
 
