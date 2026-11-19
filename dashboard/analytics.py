@@ -20,6 +20,46 @@ RANGOS_IDEALES = {
     'temperatura_raiz': (18.0, 24.0),
 }
 
+# Ajustes agronómicos de rangos ideales según etapa fenológica del cultivo
+RANGOS_POR_ETAPA = {
+    'germinacion': {
+        'humedad': (65.0, 85.0),
+        'humedad_sustrato': (65.0, 85.0),
+        'temperatura_aire': (20.0, 26.0),
+        'temperatura_agua': (20.0, 24.0),
+        'temperatura_raiz': (20.0, 24.0),
+        'ph': (5.6, 6.5),
+        'ph_sustrato': (5.6, 6.5),
+    },
+    'vegetativo': {
+        'humedad': (55.0, 75.0),
+        'humedad_sustrato': (55.0, 80.0),
+        'temperatura_aire': (18.0, 27.0),
+        'temperatura_agua': (18.0, 23.0),
+        'temperatura_raiz': (18.0, 23.0),
+        'ph': (5.5, 6.5),
+        'ph_sustrato': (5.5, 6.5),
+    },
+    'floracion': {
+        'humedad': (45.0, 65.0),
+        'humedad_sustrato': (55.0, 75.0),
+        'temperatura_aire': (19.0, 28.0),
+        'temperatura_agua': (18.0, 22.0),
+        'temperatura_raiz': (18.0, 22.0),
+        'ph': (5.8, 6.5),
+        'ph_sustrato': (5.8, 6.5),
+    },
+    'cosecha': {
+        'humedad': (40.0, 60.0),
+        'humedad_sustrato': (50.0, 70.0),
+        'temperatura_aire': (18.0, 26.0),
+        'temperatura_agua': (18.0, 22.0),
+        'temperatura_raiz': (18.0, 22.0),
+        'ph': (5.8, 6.5),
+        'ph_sustrato': (5.8, 6.5),
+    },
+}
+
 RECOMENDACIONES_ALTO = {
     'ph': 'pH elevado ({val}): aplicar reductor de pH (pH-) o revisar solución nutritiva.',
     'ph_sustrato': 'pH de raíz elevado ({val}): ajustar acidez del riego para mejorar absorción.',
@@ -58,14 +98,36 @@ ESTADO_META = {
 }
 
 
-def _obtener_limites(sensor, regla):
-    lo, hi = RANGOS_IDEALES.get(sensor.tipo, (None, None))
+def _rangos_para_cultivo(etapa=None, dias_para_cosecha=None):
+    """Construye los rangos objetivos adaptados por etapa y cercanía de cosecha."""
+    rangos = dict(RANGOS_IDEALES)
+    especificos = set()
+    if etapa and etapa in RANGOS_POR_ETAPA:
+        for tipo, limites in RANGOS_POR_ETAPA[etapa].items():
+            rangos[tipo] = limites
+            especificos.add(tipo)
+    # En ventana pre-cosecha (1-7 días), evitar exceso de humedad que favorezca hongos o pudrición
+    if dias_para_cosecha is not None and dias_para_cosecha <= 7 and etapa != 'cosecha':
+        hum_lo, hum_hi = rangos['humedad']
+        rangos['humedad'] = (min(hum_lo, 45.0), min(hum_hi, 65.0))
+        sub_lo, sub_hi = rangos['humedad_sustrato']
+        rangos['humedad_sustrato'] = (min(sub_lo, 50.0), min(sub_hi, 72.0))
+        especificos.update(('humedad', 'humedad_sustrato'))
+    return rangos, especificos
+
+
+def _obtener_limites(sensor, regla, rangos_base=None, tipos_etapa=None):
+    catalogo = rangos_base if rangos_base is not None else RANGOS_IDEALES
+    lo, hi = catalogo.get(sensor.tipo, (None, None))
+    origen = 'etapa' if (tipos_etapa and sensor.tipo in tipos_etapa) else 'general'
     if regla and regla.activa:
         if regla.limite_minimo is not None:
             lo = regla.limite_minimo
+            origen = 'regla'
         if regla.limite_maximo is not None:
             hi = regla.limite_maximo
-    return lo, hi
+            origen = 'regla'
+    return lo, hi, origen
 
 
 def _calcular_tendencia(valores_cronologicos):
@@ -106,12 +168,14 @@ def _evaluar_valor(sensor, valor, conectado, lo, hi):
     return 'optimo', True, None
 
 
-def resumen_sensores(sensores, limite_lecturas=30):
+def resumen_sensores(sensores, limite_lecturas=30, etapa=None, dias_para_cosecha=None):
     """
     Calcula estado de salud, % en rango, tendencia y recomendaciones
     para un conjunto de sensores (de una planta o de una instalación).
     """
     sensores_list = list(sensores)
+    rangos_objetivo, tipos_etapa = _rangos_para_cultivo(etapa, dias_para_cosecha)
+
     if not sensores_list:
         label, css = ESTADO_META['sin_datos']
         return {
@@ -145,7 +209,12 @@ def resumen_sensores(sensores, limite_lecturas=30):
             .order_by('-timestamp')
             .values('valor', 'estado_conexion', 'timestamp')[:limite_lecturas]
         )
-        lo, hi = _obtener_limites(sensor, reglas_map.get(sensor.id))
+        lo, hi, origen_rango = _obtener_limites(
+            sensor,
+            reglas_map.get(sensor.id),
+            rangos_base=rangos_objetivo,
+            tipos_etapa=tipos_etapa,
+        )
 
         if not lecturas:
             sensores_detalle.append({
@@ -154,6 +223,9 @@ def resumen_sensores(sensores, limite_lecturas=30):
                 'estado': 'sin_datos',
                 'tendencia': 'estable',
                 'en_rango_pct': None,
+                'rango_min': lo,
+                'rango_max': hi,
+                'rango_origen': origen_rango,
             })
             continue
 
@@ -188,6 +260,9 @@ def resumen_sensores(sensores, limite_lecturas=30):
             'timestamp': ultima['timestamp'],
             'tendencia': tendencia,
             'en_rango_pct': pct_s,
+            'rango_min': lo,
+            'rango_max': hi,
+            'rango_origen': origen_rango,
         })
 
     estado_global = inverso[peor_nivel]
@@ -217,35 +292,82 @@ def resumen_sensores(sensores, limite_lecturas=30):
     }
 
 
+def _aviso_etapa_y_cosecha(planta, estado):
+    """Genera un aviso agronómico específico según etapa fenológica y proximidad a cosecha."""
+    restantes = planta.dias_para_cosecha
+    if restantes == 0 and planta.etapa != 'cosecha':
+        return (
+            f'Ciclo estimado cumplido ({planta.dias_ciclo} días): revisar madurez de {planta.especie_nombre}, '
+            'realizar lavado radicular y preparar cosecha.'
+        )
+    if 0 < restantes <= 7 and planta.etapa != 'cosecha':
+        return (
+            f'Pre-cosecha ({restantes} d restantes): reducir nutrientes (agua limpia), mantener humedad ≤ 65% '
+            'y preparar corte.'
+        )
+    if planta.etapa == 'cosecha':
+        if estado in ('atencion', 'critico'):
+            return (
+                'Etapa de cosecha con desvío ambiental: corregir humedad/temperatura pronto para no perder '
+                'firmeza ni calidad.'
+            )
+        return (
+            'Planta en etapa de cosecha con parámetros estables: recolectar en horas frescas y planificar limpieza.'
+        )
+    if planta.etapa == 'germinacion':
+        if estado in ('atencion', 'critico'):
+            return (
+                'Etapa germinación: mayor sensibilidad radicular; estabilizar agua (20–24 °C), '
+                'pH (5.6–6.5) y humedad (65–85%).'
+            )
+        return (
+            f'Germinación / Arraigo ({restantes} d estimados a cosecha): mantener humedad alta (65–85%) '
+            'y solución templada.'
+        )
+    if planta.etapa == 'floracion':
+        return (
+            f'Floración / Desarrollo ({restantes} d para cosecha): mantener humedad ≤ 65% contra hongos, '
+            'agua fresca (18–22 °C) y pH 5.8–6.5.'
+        )
+    return (
+        f'Crecimiento vegetativo ({restantes} d para cosecha): mantener pH 5.5–6.5 y riego continuo '
+        'para impulsar follaje y raíces.'
+    )
+
+
 def resumen_planta(planta, limite_lecturas=30):
     """
-    Calcula el diagnóstico de una planta:
+    Calcula el diagnóstico de una planta con rangos adaptados a su etapa y cercanía de cosecha:
     - Si tiene sensores propios activos (planta testigo / maceta individual), usa sus propios sensores.
     - Si no tiene sensores propios, hereda automáticamente los sensores de su instalación/torre.
     """
     sensores_propios = list(planta.sensores.filter(activo=True))
     if sensores_propios:
-        resumen = resumen_sensores(sensores_propios, limite_lecturas=limite_lecturas)
-        resumen['origen_datos'] = 'propios'
-        resumen['origen_label'] = 'Planta testigo (sensores propios)'
-        return resumen
-    sensores_torre = list(planta.instalacion.sensores.filter(activo=True, planta__isnull=True))
-    resumen = resumen_sensores(sensores_torre, limite_lecturas=limite_lecturas)
-    resumen['origen_datos'] = 'compartidos'
-    resumen['origen_label'] = 'Torre compartida (hereda sensores del sistema)'
+        sensores = sensores_propios
+        origen_datos = 'propios'
+        origen_label = 'Planta testigo (sensores propios)'
+    else:
+        sensores = list(planta.instalacion.sensores.filter(activo=True, planta__isnull=True))
+        origen_datos = 'compartidos'
+        origen_label = 'Torre compartida (hereda sensores del sistema)'
 
-    if planta.etapa == 'germinacion' and resumen['estado'] in ('atencion', 'critico'):
-        resumen['recomendaciones'].append(
-            'Etapa germinación: mayor sensibilidad, mantener estabilidad de agua y temperatura en la torre.'
-        )
-    elif planta.dias_para_cosecha == 0 and planta.etapa != 'cosecha':
-        resumen['recomendaciones'].append(
-            f'Ciclo estimado cumplido ({planta.dias_ciclo} días): revisar madurez de {planta.especie_nombre} '
-            'y preparar cosecha.'
-        )
-    elif planta.etapa == 'cosecha' and resumen['estado'] == 'optimo':
-        resumen['recomendaciones'].append(
-            'Planta en etapa de cosecha con parámetros estables en la torre.'
-        )
+    resumen = resumen_sensores(
+        sensores,
+        limite_lecturas=limite_lecturas,
+        etapa=planta.etapa,
+        dias_para_cosecha=planta.dias_para_cosecha,
+    )
+    resumen['origen_datos'] = origen_datos
+    resumen['origen_label'] = origen_label
+    resumen['pre_cosecha'] = planta.dias_para_cosecha <= 7
+
+    aviso = _aviso_etapa_y_cosecha(planta, resumen['estado'])
+    resumen['aviso_cosecha'] = aviso
+
+    if resumen['estado'] == 'optimo':
+        # Reemplaza el mensaje genérico por el aviso específico de etapa y cosecha
+        resumen['recomendaciones'] = [aviso]
+    elif aviso and aviso not in resumen['recomendaciones']:
+        resumen['recomendaciones'].append(aviso)
 
     return resumen

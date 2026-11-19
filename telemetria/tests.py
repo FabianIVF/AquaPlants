@@ -721,6 +721,62 @@ class PlantasYAnaliticaTestCase(TestCase):
         orden = [f['planta'].codigo for f in resp.context['fichas']]
         self.assertEqual(orden, ['P-CRT', 'P-ATN', 'P-OPT'])
 
+    def test_rangos_por_etapa_y_avisos_precosecha(self):
+        """Los rangos y avisos de diagnóstico se adaptan según etapa y proximidad a cosecha."""
+        sensor_hum = Sensor.objects.create(
+            instalacion=self.instalacion, tipo='humedad', modelo_hardware='DHT22', activo=True
+        )
+        # 74% de humedad es óptimo en germinación (65-85%), pero crítico en floración (45-65%)
+        Medicion.objects.create(sensor=sensor_hum, valor=74.0, estado_conexion=True)
+
+        planta_germ = Planta.objects.create(
+            instalacion=self.instalacion,
+            codigo='GERM-01',
+            especie='tomate_cherry',
+            etapa='germinacion',
+        )
+        planta_flor = Planta.objects.create(
+            instalacion=self.instalacion,
+            codigo='FLOR-01',
+            especie='tomate_cherry',
+            etapa='floracion',
+        )
+        res_germ = resumen_planta(planta_germ)
+        res_flor = resumen_planta(planta_flor)
+        self.assertEqual(res_germ['estado'], 'optimo')
+        self.assertEqual(res_flor['estado'], 'critico')
+        self.assertTrue(any('floración' in r.lower() for r in res_flor['recomendaciones']))
+
+        # Planta testigo en ventana pre-cosecha (4 días restantes, 74% humedad sustrato > 72%)
+        hoy = timezone.localdate()
+        testigo_pre = Planta.objects.create(
+            instalacion=self.instalacion,
+            codigo='PRE-01',
+            especie='lechuga_costina',
+            etapa='vegetativo',
+            fecha_siembra=hoy - timedelta(days=41),
+        )
+        s_raiz = Sensor.objects.create(
+            instalacion=self.instalacion,
+            planta=testigo_pre,
+            tipo='humedad_sustrato',
+            modelo_hardware='Sonda Pre',
+            activo=True,
+        )
+        Medicion.objects.create(sensor=s_raiz, valor=74.0, estado_conexion=True)
+        res_pre = resumen_planta(testigo_pre)
+        self.assertEqual(res_pre['origen_datos'], 'propios')
+        self.assertTrue(res_pre['pre_cosecha'])
+        self.assertEqual(res_pre['estado'], 'critico')
+        self.assertTrue(any('pre-cosecha' in r.lower() for r in res_pre['recomendaciones']))
+
+        # Vista detalle muestra el rango objetivo adaptado por etapa
+        self.client.login(username='cult_plantas', password='Pass1234!')
+        resp = self.client.get(f'/dashboard/instalacion/{self.instalacion.pk}/plantas/{planta_flor.pk}/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '45')
+        self.assertContains(resp, '65')
+
 
 class AlertasCentroTestCase(TestCase):
     """

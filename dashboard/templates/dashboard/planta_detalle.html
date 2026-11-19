@@ -77,9 +77,10 @@
         </div>
     </div>
 
-    <!-- Tarjetas de sensores propios de la planta -->
+    <!-- Tarjetas de sensores propios o heredados de la planta -->
     <div class="row g-3 mb-4">
-        {% for sensor in sensores %}
+        {% for item in resumen.sensores_detalle %}
+        {% with sensor=item.sensor %}
         <div class="col-6 col-md-4">
             <div class="panel stat">
                 <div class="metric-label">{{ sensor.get_tipo_display }}</div>
@@ -88,9 +89,22 @@
                     <span id="unidad-{{ sensor.tipo }}" class="metric-unit">{{ sensor.get_unidad }}</span>
                 </div>
                 <span id="estado-{{ sensor.tipo }}" class="status status-off mt-2">Esperando</span>
-                <div id="ultima-{{ sensor.tipo }}" class="t-muted num mt-2" style="font-size:0.74rem;">Última com.: &mdash;</div>
+                {% if item.rango_min is not None or item.rango_max is not None %}
+                <div class="t-muted num mt-2" style="font-size:0.72rem;">
+                    {% if item.rango_origen == 'etapa' %}
+                        Rango {{ planta.get_etapa_display|lower }}:
+                    {% elif item.rango_origen == 'regla' %}
+                        Regla activa:
+                    {% else %}
+                        Rango óptimo:
+                    {% endif %}
+                    {{ item.rango_min|floatformat:"-1" }} &ndash; {{ item.rango_max|floatformat:"-1" }} {{ sensor.get_unidad }}
+                </div>
+                {% endif %}
+                <div id="ultima-{{ sensor.tipo }}" class="t-muted num mt-1" style="font-size:0.72rem;">Última com.: &mdash;</div>
             </div>
         </div>
+        {% endwith %}
         {% empty %}
         <div class="col-12">
             <div class="notice">Esta planta no tiene sensores propios ni la instalación tiene sensores activos configurados.</div>

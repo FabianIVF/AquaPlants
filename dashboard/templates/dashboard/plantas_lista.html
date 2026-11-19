@@ -30,6 +30,8 @@
                             <span class="status {{ res.estado_css }}">{{ res.estado_label }}</span>
                             {% if p.lista_para_cosechar %}
                             <span class="status status-ok" style="padding:0.18rem 0.5rem;">Lista para cosechar</span>
+                            {% elif res.pre_cosecha %}
+                            <span class="status status-warn" style="padding:0.18rem 0.5rem;">Pre-cosecha ({{ p.dias_para_cosecha }}d)</span>
                             {% endif %}
                         </div>
                         <div class="t-muted mb-2" style="font-size:0.82rem;">
@@ -91,6 +93,11 @@
                         <div class="t-muted" style="font-size:0.79rem;">
                             <i class="bi bi-lightbulb me-1"></i>{{ res.recomendaciones.0 }}
                         </div>
+                        {% if res.aviso_cosecha and res.aviso_cosecha != res.recomendaciones.0 %}
+                        <div class="t-muted mt-1" style="font-size:0.75rem;">
+                            <i class="bi bi-calendar2-check me-1"></i>{{ res.aviso_cosecha }}
+                        </div>
+                        {% endif %}
                     </div>
 
                     <!-- Acciones -->
