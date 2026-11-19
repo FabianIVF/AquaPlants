@@ -635,3 +635,31 @@ class PlantasYAnaliticaTestCase(TestCase):
         self.assertTrue(tomate.lista_para_cosechar)
         res = resumen_planta(tomate)
         self.assertTrue(any('preparar cosecha' in r.lower() for r in res['recomendaciones']))
+
+    def test_lista_plantas_ordena_por_severidad_criticas_primero(self):
+        """Las plantas críticas y en atención deben aparecer antes que las óptimas en el listado."""
+        p_opt = Planta.objects.create(instalacion=self.instalacion, codigo='P-OPT', especie='lechuga_costina')
+        p_atn = Planta.objects.create(instalacion=self.instalacion, codigo='P-ATN', especie='rucula')
+        p_crt = Planta.objects.create(instalacion=self.instalacion, codigo='P-CRT', especie='albahaca')
+
+        s_opt = Sensor.objects.create(
+            instalacion=self.instalacion, planta=p_opt, tipo='ph_sustrato', modelo_hardware='S1', activo=True
+        )
+        s_atn = Sensor.objects.create(
+            instalacion=self.instalacion, planta=p_atn, tipo='ph_sustrato', modelo_hardware='S2', activo=True
+        )
+        s_crt = Sensor.objects.create(
+            instalacion=self.instalacion, planta=p_crt, tipo='ph_sustrato', modelo_hardware='S3', activo=True
+        )
+
+        # 6.00 = Óptimo, 6.45 = Atención (cerca de 6.5), 8.20 = Crítico
+        Medicion.objects.create(sensor=s_opt, valor=6.00, estado_conexion=True)
+        Medicion.objects.create(sensor=s_atn, valor=6.45, estado_conexion=True)
+        Medicion.objects.create(sensor=s_crt, valor=8.20, estado_conexion=True)
+
+        self.client.login(username='cult_plantas', password='Pass1234!')
+        resp = self.client.get(f'/dashboard/instalacion/{self.instalacion.pk}/plantas/')
+        self.assertEqual(resp.status_code, 200)
+
+        orden = [f['planta'].codigo for f in resp.context['fichas']]
+        self.assertEqual(orden, ['P-CRT', 'P-ATN', 'P-OPT'])

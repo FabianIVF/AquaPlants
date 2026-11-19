@@ -272,6 +272,7 @@ def lista_plantas(request, instalacion_id):
     instalacion = _obtener_instalacion_autorizada(request.user, instalacion_id)
     plantas = Planta.objects.filter(instalacion=instalacion)
 
+    prioridad_estado = {'critico': 0, 'atencion': 1, 'optimo': 2, 'sin_datos': 3}
     fichas = []
     for planta in plantas:
         sensores_propios = planta.sensores.filter(activo=True)
@@ -281,6 +282,13 @@ def lista_plantas(request, instalacion_id):
             'resumen': resumen,
             'num_sensores': sensores_propios.count(),
         })
+
+    fichas.sort(key=lambda item: (
+        prioridad_estado.get(item['resumen']['estado'], 9),
+        item['resumen']['porcentaje_en_rango'] if item['resumen']['porcentaje_en_rango'] is not None else 101,
+        item['planta'].dias_para_cosecha,
+        item['planta'].codigo,
+    ))
 
     contexto = {
         'instalacion': instalacion,

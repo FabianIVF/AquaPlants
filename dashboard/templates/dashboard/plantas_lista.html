@@ -8,7 +8,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>
             <h2 class="panel-title" style="font-size:1.05rem;">Plantas monitoreadas en {{ instalacion.nombre }}</h2>
-            <p class="panel-sub">Estado individual, días de cultivo, % en rango y recomendaciones prácticas por planta.</p>
+            <p class="panel-sub">Ordenadas por prioridad de atención: las plantas en estado crítico o al límite aparecen primero.</p>
         </div>
         {% if perms.telemetria.add_planta %}
         <a href="{% url 'crear_planta' instalacion.pk %}" class="btn btn-primary-ap btn-sm">
@@ -17,95 +17,101 @@
         {% endif %}
     </div>
 
-    <div class="row g-3">
+    <div class="d-flex flex-column gap-3">
         {% for item in fichas %}
         {% with p=item.planta res=item.resumen %}
-        <div class="col-md-6 col-xl-4">
-            <div class="panel site-card">
-                <div class="panel-body">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                        <div>
-                            <h3 class="panel-title" style="font-size:1rem;">{{ p.codigo }}</h3>
-                            <div class="t-muted" style="font-size:0.8rem;">
-                                {{ p.especie_nombre }}{% if p.variedad %} &middot; {{ p.variedad }}{% endif %}
-                            </div>
-                        </div>
-                        <span class="status {{ res.estado_css }}">{{ res.estado_label }}</span>
-                    </div>
-
-                    <div class="d-flex flex-wrap gap-1 my-2">
-                        <span class="tag">{{ p.get_etapa_display }}</span>
-                        {% if p.posicion %}<span class="tag">{{ p.posicion }}</span>{% endif %}
-                        {% if res.origen_datos == 'propios' %}
-                            <span class="tag"><i class="bi bi-cpu me-1"></i>Planta testigo ({{ item.num_sensores }})</span>
-                        {% else %}
-                            <span class="tag"><i class="bi bi-diagram-3 me-1"></i>Torre compartida</span>
-                        {% endif %}
-                        {% if p.lista_para_cosechar %}
-                            <span class="status status-ok" style="padding:0.15rem 0.45rem;">Lista para cosechar</span>
-                        {% endif %}
-                    </div>
-
-                    <div class="row g-2 my-2 text-center">
-                        <div class="col-4">
-                            <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                <div class="stat-label">Plantada</div>
-                                <div class="fw-semibold num">Día {{ p.dias_desde_siembra }}</div>
-                                <div class="t-muted num" style="font-size:0.68rem;">{{ p.fecha_siembra|date:"d/m/Y" }}</div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                <div class="stat-label">Cosecha aprox.</div>
-                                <div class="fw-semibold num">
-                                    {% if p.dias_para_cosecha == 0 %}Hoy{% else %}{{ p.dias_para_cosecha }} d{% endif %}
-                                </div>
-                                <div class="t-muted num" style="font-size:0.68rem;">{{ p.fecha_estimada_cosecha|date:"d/m/Y" }}</div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                <div class="stat-label">En rango</div>
-                                <div class="fw-semibold num">
-                                    {% if res.porcentaje_en_rango is not None %}{{ res.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
-                                </div>
-                                <div class="t-muted num" style="font-size:0.68rem;">Ciclo {{ p.dias_ciclo }}d</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-2">
-                        <div class="d-flex justify-content-between t-muted num" style="font-size:0.7rem;margin-bottom:0.2rem;">
-                            <span>Progreso de cultivo</span>
-                            <span>{{ p.progreso_cosecha }}%</span>
-                        </div>
-                        <div class="progress" style="height:5px;background:var(--ap-surface-2);">
-                            <div class="progress-bar" role="progressbar" style="width:{{ p.progreso_cosecha }}%;background:var(--ap-accent);" aria-valuenow="{{ p.progreso_cosecha }}" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
-
-                    <div class="t-muted mb-3" style="font-size:0.79rem;">
-                        <i class="bi bi-lightbulb me-1"></i>{{ res.recomendaciones.0 }}
-                    </div>
-
-                    <div class="d-flex flex-column gap-2 mt-auto">
-                        <a href="{% url 'detalle_planta' instalacion.pk p.pk %}" class="btn btn-primary-ap btn-sm w-100">
-                            <i class="bi bi-activity"></i>Ver telemetría en vivo
-                        </a>
-                        {% if perms.telemetria.change_planta or perms.telemetria.delete_planta %}
-                        <div class="d-flex gap-2">
-                            {% if perms.telemetria.change_planta %}
-                            <a href="{% url 'editar_planta' instalacion.pk p.pk %}" class="btn btn-ghost btn-sm flex-fill">
-                                <i class="bi bi-pencil"></i>Editar
-                            </a>
-                            {% endif %}
-                            {% if perms.telemetria.delete_planta %}
-                            <a href="{% url 'eliminar_planta' instalacion.pk p.pk %}" class="btn btn-ghost-danger btn-sm flex-fill">
-                                <i class="bi bi-trash3"></i>Eliminar
-                            </a>
+        <div class="panel" style="border-left: 3px solid {% if res.estado == 'critico' %}var(--ap-danger){% elif res.estado == 'atencion' %}var(--ap-warning){% elif res.estado == 'optimo' %}var(--ap-accent){% else %}var(--ap-border-strong){% endif %};">
+            <div class="panel-body py-3 px-4">
+                <div class="row g-3 align-items-center">
+                    <!-- Identidad y estado -->
+                    <div class="col-12 col-lg-4">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                            <h3 class="panel-title mb-0" style="font-size:1.02rem;">{{ p.codigo }}</h3>
+                            <span class="status {{ res.estado_css }}">{{ res.estado_label }}</span>
+                            {% if p.lista_para_cosechar %}
+                            <span class="status status-ok" style="padding:0.18rem 0.5rem;">Lista para cosechar</span>
                             {% endif %}
                         </div>
-                        {% endif %}
+                        <div class="t-muted mb-2" style="font-size:0.82rem;">
+                            {{ p.especie_nombre }}{% if p.variedad %} &middot; {{ p.variedad }}{% endif %}
+                            {% if p.posicion %} &middot; {{ p.posicion }}{% endif %}
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                            <span class="tag">{{ p.get_etapa_display }}</span>
+                            {% if res.origen_datos == 'propios' %}
+                                <span class="tag"><i class="bi bi-cpu me-1"></i>Planta testigo ({{ item.num_sensores }})</span>
+                            {% else %}
+                                <span class="tag"><i class="bi bi-diagram-3 me-1"></i>Torre compartida</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Indicadores agronómicos y diagnóstico -->
+                    <div class="col-12 col-lg-5">
+                        <div class="row g-2 mb-2 text-center">
+                            <div class="col-4">
+                                <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
+                                    <div class="stat-label">Plantada</div>
+                                    <div class="fw-semibold num" style="font-size:0.95rem;">Día {{ p.dias_desde_siembra }}</div>
+                                    <div class="t-muted num" style="font-size:0.68rem;">{{ p.fecha_siembra|date:"d/m/Y" }}</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
+                                    <div class="stat-label">Cosecha aprox.</div>
+                                    <div class="fw-semibold num" style="font-size:0.95rem;">
+                                        {% if p.dias_para_cosecha == 0 %}Hoy{% else %}{{ p.dias_para_cosecha }} d{% endif %}
+                                    </div>
+                                    <div class="t-muted num" style="font-size:0.68rem;">{{ p.fecha_estimada_cosecha|date:"d/m/Y" }}</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
+                                    <div class="stat-label">En rango</div>
+                                    <div class="fw-semibold num" style="font-size:0.95rem;">
+                                        {% if res.porcentaje_en_rango is not None %}{{ res.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
+                                    </div>
+                                    <div class="t-muted num" style="font-size:0.68rem;">Ciclo {{ p.dias_ciclo }}d</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between t-muted num" style="font-size:0.7rem;margin-bottom:0.2rem;">
+                                <span>Progreso de cultivo</span>
+                                <span>{{ p.progreso_cosecha }}%</span>
+                            </div>
+                            <div class="progress" style="height:5px;background:var(--ap-surface-2);">
+                                <div class="progress-bar" role="progressbar" style="width:{{ p.progreso_cosecha }}%;background:var(--ap-accent);" aria-valuenow="{{ p.progreso_cosecha }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+
+                        <div class="t-muted" style="font-size:0.79rem;">
+                            <i class="bi bi-lightbulb me-1"></i>{{ res.recomendaciones.0 }}
+                        </div>
+                    </div>
+
+                    <!-- Acciones -->
+                    <div class="col-12 col-lg-3">
+                        <div class="d-flex flex-row flex-lg-column gap-2 justify-content-lg-end">
+                            <a href="{% url 'detalle_planta' instalacion.pk p.pk %}" class="btn btn-primary-ap btn-sm flex-fill">
+                                <i class="bi bi-activity"></i>Ver telemetría en vivo
+                            </a>
+                            {% if perms.telemetria.change_planta or perms.telemetria.delete_planta %}
+                            <div class="d-flex gap-2">
+                                {% if perms.telemetria.change_planta %}
+                                <a href="{% url 'editar_planta' instalacion.pk p.pk %}" class="btn btn-ghost btn-sm flex-fill">
+                                    <i class="bi bi-pencil"></i>Editar
+                                </a>
+                                {% endif %}
+                                {% if perms.telemetria.delete_planta %}
+                                <a href="{% url 'eliminar_planta' instalacion.pk p.pk %}" class="btn btn-ghost-danger btn-sm flex-fill">
+                                    <i class="bi bi-trash3"></i>Eliminar
+                                </a>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -113,16 +119,14 @@
         {% endwith %}
 
         {% empty %}
-        <div class="col-12">
-            <div class="panel">
-                <div class="panel-body text-center py-5">
-                    <p class="t-muted mb-3">Aún no hay plantas registradas en esta instalación.</p>
-                    {% if perms.telemetria.add_planta %}
-                    <a href="{% url 'crear_planta' instalacion.pk %}" class="btn btn-primary-ap btn-sm">
-                        <i class="bi bi-plus-lg"></i>Agregar la primera planta
-                    </a>
-                    {% endif %}
-                </div>
+        <div class="panel">
+            <div class="panel-body text-center py-5">
+                <p class="t-muted mb-3">Aún no hay plantas registradas en esta instalación.</p>
+                {% if perms.telemetria.add_planta %}
+                <a href="{% url 'crear_planta' instalacion.pk %}" class="btn btn-primary-ap btn-sm">
+                    <i class="bi bi-plus-lg"></i>Agregar la primera planta
+                </a>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
