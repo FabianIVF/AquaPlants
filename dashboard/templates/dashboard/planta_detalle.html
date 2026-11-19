@@ -23,9 +23,12 @@
         <div class="panel-head">
             <div>
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <h2 class="panel-title" style="font-size:1.1rem;">{{ planta.codigo }} &middot; {{ planta.especie }}</h2>
+                    <h2 class="panel-title" style="font-size:1.1rem;">{{ planta.codigo }} &middot; {{ planta.especie_nombre }}</h2>
                     <span id="diag-estado" class="status {{ resumen.estado_css }}">{{ resumen.estado_label }}</span>
                     <span class="tag">{{ resumen.origen_label }}</span>
+                    {% if planta.lista_para_cosechar %}
+                    <span class="status status-ok">Lista para cosechar</span>
+                    {% endif %}
                 </div>
                 <p class="panel-sub">
                     {% if planta.variedad %}Variedad: {{ planta.variedad }} &middot; {% endif %}
@@ -48,14 +51,16 @@
         <div class="panel-body">
             <div class="row g-3 align-items-center">
                 <div class="col-6 col-md-2">
-                    <div class="stat-label">Días de cultivo</div>
-                    <div class="fw-semibold num" style="font-size:1.35rem;">{{ planta.dias_desde_siembra }} d</div>
-                    <div class="stat-note">Siembra: {{ planta.fecha_siembra|date:"d/m/Y" }}</div>
+                    <div class="stat-label">Día de cultivo</div>
+                    <div class="fw-semibold num" style="font-size:1.35rem;">Día {{ planta.dias_desde_siembra }}</div>
+                    <div class="stat-note">Plantada: {{ planta.fecha_siembra|date:"d/m/Y" }}</div>
                 </div>
                 <div class="col-6 col-md-2">
-                    <div class="stat-label">Para cosecha</div>
-                    <div class="fw-semibold num" style="font-size:1.35rem;">{{ planta.dias_para_cosecha }} d</div>
-                    <div class="stat-note">Ciclo est. {{ planta.CICLO_DIAS_DEFAULT }}d</div>
+                    <div class="stat-label">Cosecha aprox.</div>
+                    <div class="fw-semibold num" style="font-size:1.35rem;">
+                        {% if planta.dias_para_cosecha == 0 %}Lista{% else %}{{ planta.dias_para_cosecha }} d{% endif %}
+                    </div>
+                    <div class="stat-note">{{ planta.fecha_estimada_cosecha|date:"d/m/Y" }} ({{ planta.dias_ciclo }}d)</div>
                 </div>
                 <div class="col-6 col-md-2">
                     <div class="stat-label">En rango</div>

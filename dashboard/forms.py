@@ -285,17 +285,17 @@ class PlantaForm(forms.ModelForm):
         fields = ['codigo', 'especie', 'variedad', 'posicion', 'fecha_siembra', 'etapa', 'activa', 'notas']
         labels = {
             'codigo': 'Código o Nombre de la Planta',
-            'especie': 'Especie',
+            'especie': 'Especie compatible (ciclo estimado)',
             'variedad': 'Variedad',
             'posicion': 'Posición en torre / bancal',
-            'fecha_siembra': 'Fecha de siembra',
+            'fecha_siembra': 'Día en que se plantó',
             'etapa': 'Etapa de crecimiento',
             'activa': 'Planta activa en monitoreo',
             'notas': 'Notas agronómicas',
         }
         widgets = {
             'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. T1-N2-01'}),
-            'especie': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Lechuga Costina'}),
+            'especie': forms.Select(attrs={'class': 'form-select'}),
             'variedad': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Romana / Hidropónica'}),
             'posicion': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Torre 1 · Nivel 2'}),
             'fecha_siembra': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),

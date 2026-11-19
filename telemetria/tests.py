@@ -532,7 +532,7 @@ class PlantasYAnaliticaTestCase(TestCase):
         self.client.login(username='cult_plantas', password='Pass1234!')
         resp = self.client.post(f'/dashboard/instalacion/{self.instalacion.pk}/plantas/crear/', {
             'codigo': 'T1-A01',
-            'especie': 'Lechuga Costina',
+            'especie': 'lechuga_costina',
             'variedad': 'Romana',
             'posicion': 'Torre 1 · Nivel 1',
             'fecha_siembra': str(timezone.localdate() - timedelta(days=10)),
@@ -605,3 +605,33 @@ class PlantasYAnaliticaTestCase(TestCase):
         data = resp.json()
         self.assertEqual(data['resumen']['origen_datos'], 'compartidos')
         self.assertEqual(data['sensores']['ph']['mediciones'][0]['valor'], 7.9)
+
+    def test_catalogo_plantas_calcula_dias_y_fecha_estimada_cosecha(self):
+        """Cada especie compatible calcula sus días de cultivo, fecha de cosecha y aviso de madurez."""
+        siembra_rucula = timezone.localdate() - timedelta(days=12)
+        rucula = Planta.objects.create(
+            instalacion=self.instalacion,
+            codigo='T3-R01',
+            especie='rucula',
+            fecha_siembra=siembra_rucula,
+            etapa='vegetativo',
+        )
+        self.assertEqual(rucula.especie_nombre, 'Rúcula')
+        self.assertEqual(rucula.dias_ciclo, 30)
+        self.assertEqual(rucula.dias_desde_siembra, 12)
+        self.assertEqual(rucula.dias_para_cosecha, 18)
+        self.assertEqual(rucula.progreso_cosecha, 40)
+        self.assertEqual(rucula.fecha_estimada_cosecha, siembra_rucula + timedelta(days=30))
+        self.assertFalse(rucula.lista_para_cosechar)
+
+        tomate = Planta.objects.create(
+            instalacion=self.instalacion,
+            codigo='T3-T02',
+            especie='tomate_cherry',
+            fecha_siembra=timezone.localdate() - timedelta(days=82),
+            etapa='floracion',
+        )
+        self.assertEqual(tomate.dias_para_cosecha, 0)
+        self.assertTrue(tomate.lista_para_cosechar)
+        res = resumen_planta(tomate)
+        self.assertTrue(any('preparar cosecha' in r.lower() for r in res['recomendaciones']))

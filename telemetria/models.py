@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -149,6 +150,28 @@ class Instalacion(models.Model):
         return self.nombre
 
 
+# ============================================================
+# CATÁLOGO DE PLANTAS COMPATIBLES CON TORRES Y MACETAS HIDROPÓNICAS
+# ============================================================
+PLANTAS_CATALOGO = {
+    'lechuga_costina': {'nombre': 'Lechuga Costina / Romana', 'dias_cosecha': 45},
+    'lechuga_mantecosa': {'nombre': 'Lechuga Mantecosa / Escarola', 'dias_cosecha': 40},
+    'rucula': {'nombre': 'Rúcula', 'dias_cosecha': 30},
+    'espinaca': {'nombre': 'Espinaca', 'dias_cosecha': 40},
+    'acelga': {'nombre': 'Acelga', 'dias_cosecha': 50},
+    'albahaca': {'nombre': 'Albahaca Genovesa', 'dias_cosecha': 35},
+    'cilantro': {'nombre': 'Cilantro', 'dias_cosecha': 35},
+    'perejil': {'nombre': 'Perejil', 'dias_cosecha': 60},
+    'menta': {'nombre': 'Menta / Hierbabuena', 'dias_cosecha': 45},
+    'kale': {'nombre': 'Kale / Col Rizada', 'dias_cosecha': 55},
+    'pak_choi': {'nombre': 'Pak Choi / Bok Choy', 'dias_cosecha': 40},
+    'cebollin': {'nombre': 'Cebollín', 'dias_cosecha': 50},
+    'frutilla': {'nombre': 'Frutilla / Fresa', 'dias_cosecha': 75},
+    'tomate_cherry': {'nombre': 'Tomate Cherry', 'dias_cosecha': 80},
+    'otra': {'nombre': 'Otra especie compatible', 'dias_cosecha': 45},
+}
+
+
 class Planta(models.Model):
     ETAPA_CHOICES = [
         ('germinacion', 'Germinación'),
@@ -156,12 +179,16 @@ class Planta(models.Model):
         ('floracion', 'Floración / Desarrollo'),
         ('cosecha', 'Lista para Cosecha'),
     ]
+    ESPECIE_CHOICES = [
+        (clave, f"{datos['nombre']} (~{datos['dias_cosecha']} días)")
+        for clave, datos in PLANTAS_CATALOGO.items()
+    ]
     CICLO_DIAS_DEFAULT = 45
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     instalacion = models.ForeignKey(Instalacion, on_delete=models.CASCADE, related_name='plantas')
     codigo = models.CharField(max_length=80)
-    especie = models.CharField(max_length=100)
+    especie = models.CharField(max_length=100, choices=ESPECIE_CHOICES, default='lechuga_costina')
     variedad = models.CharField(max_length=100, blank=True)
     posicion = models.CharField(max_length=50, blank=True)
     fecha_siembra = models.DateField(default=timezone.localdate)
@@ -175,17 +202,51 @@ class Planta(models.Model):
         unique_together = [('instalacion', 'codigo')]
 
     def __str__(self):
-        return f"{self.codigo} ({self.especie}) - {self.instalacion.nombre}"
+        return f"{self.codigo} ({self.especie_nombre}) - {self.instalacion.nombre}"
+
+    @property
+    def info_especie(self):
+        if self.especie in PLANTAS_CATALOGO:
+            return PLANTAS_CATALOGO[self.especie]
+        buscado = self.especie.strip().lower()
+        for datos in PLANTAS_CATALOGO.values():
+            if datos['nombre'].lower() == buscado:
+                return datos
+        return {'nombre': self.especie, 'dias_cosecha': self.CICLO_DIAS_DEFAULT}
+
+    @property
+    def especie_nombre(self):
+        return self.info_especie['nombre']
+
+    @property
+    def dias_ciclo(self):
+        return self.info_especie['dias_cosecha']
 
     @property
     def dias_desde_siembra(self):
         return max(0, (timezone.localdate() - self.fecha_siembra).days)
 
     @property
+    def fecha_estimada_cosecha(self):
+        return self.fecha_siembra + timedelta(days=self.dias_ciclo)
+
+    @property
     def dias_para_cosecha(self):
         if self.etapa == 'cosecha':
             return 0
-        return max(0, self.CICLO_DIAS_DEFAULT - self.dias_desde_siembra)
+        return max(0, self.dias_ciclo - self.dias_desde_siembra)
+
+    @property
+    def progreso_cosecha(self):
+        if self.etapa == 'cosecha':
+            return 100
+        if self.dias_ciclo <= 0:
+            return 0
+        return min(100, round((self.dias_desde_siembra / self.dias_ciclo) * 100))
+
+    @property
+    def lista_para_cosechar(self):
+        return self.etapa == 'cosecha' or self.dias_para_cosecha == 0
 
 
 class Sensor(models.Model):

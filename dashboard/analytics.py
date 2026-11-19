@@ -238,6 +238,11 @@ def resumen_planta(planta, limite_lecturas=30):
         resumen['recomendaciones'].append(
             'Etapa germinación: mayor sensibilidad, mantener estabilidad de agua y temperatura en la torre.'
         )
+    elif planta.dias_para_cosecha == 0 and planta.etapa != 'cosecha':
+        resumen['recomendaciones'].append(
+            f'Ciclo estimado cumplido ({planta.dias_ciclo} días): revisar madurez de {planta.especie_nombre} '
+            'y preparar cosecha.'
+        )
     elif planta.etapa == 'cosecha' and resumen['estado'] == 'optimo':
         resumen['recomendaciones'].append(
             'Planta en etapa de cosecha con parámetros estables en la torre.'

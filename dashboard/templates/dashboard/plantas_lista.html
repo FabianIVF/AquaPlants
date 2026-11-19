@@ -27,7 +27,7 @@
                         <div>
                             <h3 class="panel-title" style="font-size:1rem;">{{ p.codigo }}</h3>
                             <div class="t-muted" style="font-size:0.8rem;">
-                                {{ p.especie }}{% if p.variedad %} &middot; {{ p.variedad }}{% endif %}
+                                {{ p.especie_nombre }}{% if p.variedad %} &middot; {{ p.variedad }}{% endif %}
                             </div>
                         </div>
                         <span class="status {{ res.estado_css }}">{{ res.estado_label }}</span>
@@ -41,19 +41,26 @@
                         {% else %}
                             <span class="tag"><i class="bi bi-diagram-3 me-1"></i>Torre compartida</span>
                         {% endif %}
+                        {% if p.lista_para_cosechar %}
+                            <span class="status status-ok" style="padding:0.15rem 0.45rem;">Lista para cosechar</span>
+                        {% endif %}
                     </div>
 
                     <div class="row g-2 my-2 text-center">
                         <div class="col-4">
                             <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                <div class="stat-label">Siembra</div>
-                                <div class="fw-semibold num">{{ p.dias_desde_siembra }} d</div>
+                                <div class="stat-label">Plantada</div>
+                                <div class="fw-semibold num">Día {{ p.dias_desde_siembra }}</div>
+                                <div class="t-muted num" style="font-size:0.68rem;">{{ p.fecha_siembra|date:"d/m/Y" }}</div>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                <div class="stat-label">Cosecha</div>
-                                <div class="fw-semibold num">{{ p.dias_para_cosecha }} d</div>
+                                <div class="stat-label">Cosecha aprox.</div>
+                                <div class="fw-semibold num">
+                                    {% if p.dias_para_cosecha == 0 %}Hoy{% else %}{{ p.dias_para_cosecha }} d{% endif %}
+                                </div>
+                                <div class="t-muted num" style="font-size:0.68rem;">{{ p.fecha_estimada_cosecha|date:"d/m/Y" }}</div>
                             </div>
                         </div>
                         <div class="col-4">
@@ -62,7 +69,18 @@
                                 <div class="fw-semibold num">
                                     {% if res.porcentaje_en_rango is not None %}{{ res.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
                                 </div>
+                                <div class="t-muted num" style="font-size:0.68rem;">Ciclo {{ p.dias_ciclo }}d</div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between t-muted num" style="font-size:0.7rem;margin-bottom:0.2rem;">
+                            <span>Progreso de cultivo</span>
+                            <span>{{ p.progreso_cosecha }}%</span>
+                        </div>
+                        <div class="progress" style="height:5px;background:var(--ap-surface-2);">
+                            <div class="progress-bar" role="progressbar" style="width:{{ p.progreso_cosecha }}%;background:var(--ap-accent);" aria-valuenow="{{ p.progreso_cosecha }}" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
                     </div>
 
