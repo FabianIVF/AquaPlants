@@ -74,13 +74,20 @@ class Command(BaseCommand):  # Convierte este script en una herramienta de conso
         iot_user.is_superuser = False
         iot_user.save()
 
-        # Permisos requeridos para reportar telemetría y consultar inventario de sensores/plantas
+        # Permisos requeridos para reportar telemetría y consultar inventario de sensores/plantas/invernaderos
         perm_add_medicion = Permission.objects.get(content_type=ct_medicion, codename='add_medicion')
         perm_view_sensor = Permission.objects.get(content_type=ct_sensor, codename='view_sensor')
         perm_view_instalacion = Permission.objects.get(content_type=ct_instalacion, codename='view_instalacion')
         perm_view_planta = Permission.objects.get(content_type=ct_planta, codename='view_planta')
+        perm_view_invernadero = Permission.objects.get(content_type=ct_invernadero, codename='view_invernadero')
 
-        permisos_iot = [perm_add_medicion, perm_view_sensor, perm_view_instalacion, perm_view_planta]
+        permisos_iot = [
+            perm_add_medicion,
+            perm_view_sensor,
+            perm_view_instalacion,
+            perm_view_planta,
+            perm_view_invernadero,
+        ]
         iot_user.user_permissions.set(permisos_iot)
 
         grupo_iot = Group.objects.get(name='Dispositivo IoT')

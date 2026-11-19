@@ -81,9 +81,17 @@ class MedicionSerializer(serializers.ModelSerializer):
         return value
 
     def validate_sensor(self, sensor):
-        # No se aceptan lecturas de sensores desactivados en el dashboard
+        # No se aceptan lecturas de sensores desactivados, plantas inactivas o torres inactivas
         if not sensor.activo:
             raise serializers.ValidationError(
                 "Este sensor está desactivado para esta instalación; la lectura fue rechazada."
+            )
+        if not sensor.instalacion.activa:
+            raise serializers.ValidationError(
+                "La instalación/torre asociada está inactiva; la lectura fue rechazada."
+            )
+        if sensor.planta_id and not sensor.planta.activa:
+            raise serializers.ValidationError(
+                "La planta asociada está inactiva o cosechada; la lectura fue rechazada."
             )
         return sensor

@@ -1,6 +1,8 @@
 import time
 from datetime import timedelta
 from io import StringIO
+from types import SimpleNamespace
+from unittest.mock import Mock
 from django.test import TestCase, Client
 from django.conf import settings
 from django.core.management import call_command
@@ -14,6 +16,7 @@ from rest_framework import status
 from telemetria.models import Invernadero, Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
 from dashboard.analytics import resumen_planta, resumen_sensores
 from dashboard.forms import ReglaAlertaForm, InstalacionForm
+from simulador_iot import SimuladorAquaBrain
 
 
 class ModelosTelemetriaTestCase(TestCase):
@@ -325,6 +328,8 @@ class SeguridadPunto6TestCase(TestCase):
         self.assertTrue(user_iot.has_perm('telemetria.add_medicion'))
         self.assertTrue(user_iot.has_perm('telemetria.view_sensor'))
         self.assertTrue(user_iot.has_perm('telemetria.view_instalacion'))
+        self.assertTrue(user_iot.has_perm('telemetria.view_planta'))
+        self.assertTrue(user_iot.has_perm('telemetria.view_invernadero'))
         self.assertTrue(user_iot.groups.filter(name='Dispositivo IoT').exists())
 
     def test_setup_roles_diferencia_admin_cultivador_supervisor(self):
@@ -776,3 +781,98 @@ class InvernaderosMonitorTestCase(TestCase):
         self.assertEqual(resp_mon.status_code, 200)
         nombres_inv = [g['invernadero'].nombre for g in resp_mon.context['grupos_invernaderos']]
         self.assertEqual(nombres_inv, ['Invernadero Norte'])
+
+
+class SimuladorAdaptativoTestCase(APITestCase):
+    """
+    Verifica que simulador_iot.py se adapte cuando faltan torres,
+    hay torres independientes o existen plantas individuales activas/inactivas.
+    """
+    def _args_base(self, **overrides):
+        base = {
+            'url': 'http://127.0.0.1:8000',
+            'usuario': 'iot_device',
+            'password': 'secret',
+            'invernadero': None,
+            'instalacion': None,
+            'planta': None,
+            'solo_plantas': False,
+            'solo_torres': False,
+            'intervalo': 0.1,
+            'anomalias': 0.0,
+            'fallos': 0.0,
+            'resync': 10,
+            'ciclos': 1,
+        }
+        base.update(overrides)
+        return SimpleNamespace(**base)
+
+    def test_api_rechaza_lectura_de_planta_inactiva(self):
+        """La API rechaza mediciones enviadas a un sensor cuya planta está inactiva (HTTP 400)."""
+        call_command('setup_roles', stdout=StringIO())
+        inst = Instalacion.objects.create(nombre='Torre Cosecha', ubicacion='Nave 1', activa=True)
+        planta_inactiva = Planta.objects.create(
+            instalacion=inst, codigo='P-COSECHADA', especie='rucula', activa=False
+        )
+        sensor = Sensor.objects.create(
+            instalacion=inst, planta=planta_inactiva, tipo='ph_sustrato', modelo_hardware='S1', activo=True
+        )
+        self.client.login(username='iot_device', password='AquaSecret2026!')
+        resp = self.client.post('/api/mediciones/', {
+            'sensor': str(sensor.id), 'valor': '6.10', 'estado_conexion': True
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_simulador_filtra_torres_faltantes_y_plantas_independientes(self):
+        """
+        El simulador omite invernaderos inactivos y plantas inactivas,
+        pero conserva torres independientes (sin invernadero) y plantas activas.
+        """
+        sim = SimuladorAquaBrain(self._args_base())
+        datos_mock = {
+            '/api/invernaderos/': [
+                {'id': 'inv-1', 'nombre': 'Inv Activo', 'activa': True},
+                {'id': 'inv-2', 'nombre': 'Inv Apagado', 'activa': False},
+            ],
+            '/api/instalaciones/': [
+                {'id': 't-indep', 'nombre': 'Torre Libre', 'invernadero': None, 'activa': True},
+                {'id': 't-apagada', 'nombre': 'Torre Inv 2', 'invernadero': 'inv-2', 'activa': True},
+            ],
+            '/api/plantas/': [
+                {'id': 'p-activa', 'codigo': 'T-P1', 'instalacion': 't-indep', 'activa': True},
+            ],
+            '/api/sensores/': [
+                {
+                    'id': 's-torre', 'instalacion': 't-indep', 'instalacion_nombre': 'Torre Libre',
+                    'planta': None, 'planta_codigo': None, 'tipo': 'ph', 'activo': True,
+                },
+                {
+                    'id': 's-planta-ok', 'instalacion': 't-indep', 'instalacion_nombre': 'Torre Libre',
+                    'planta': 'p-activa', 'planta_codigo': 'T-P1', 'tipo': 'humedad_sustrato', 'activo': True,
+                },
+                {
+                    'id': 's-planta-off', 'instalacion': 't-indep', 'instalacion_nombre': 'Torre Libre',
+                    'planta': 'p-inactiva', 'planta_codigo': 'T-OFF', 'tipo': 'ph_sustrato', 'activo': True,
+                },
+                {
+                    'id': 's-inv-off', 'instalacion': 't-apagada', 'instalacion_nombre': 'Torre Inv 2',
+                    'planta': None, 'planta_codigo': None, 'tipo': 'caudal', 'activo': True,
+                },
+            ],
+        }
+        sim._get_todo = lambda ruta, params=None: datos_mock[ruta]
+        sim.sincronizar()
+        self.assertEqual([s['id'] for s in sim.sensores], ['s-torre', 's-planta-ok'])
+
+        # Si falta la torre solicitada por --instalacion, no cae con SystemExit: espera con 0 sensores
+        sim_missing = SimuladorAquaBrain(self._args_base(instalacion='TorreQueNoExiste'))
+        sim_missing._get_todo = lambda ruta, params=None: datos_mock[ruta]
+        sim_missing.sincronizar()
+        self.assertEqual(sim_missing.sensores, [])
+
+        # Ante un 404 (torre o sensor borrado en vivo), activa forzar_resync
+        resp_404 = Mock(status_code=404, text='Not found')
+        sim.session.post = lambda *a, **kw: resp_404
+        sim.forzar_resync = False
+        sim.enviar(sim.sensores[0])
+        self.assertTrue(sim.forzar_resync)

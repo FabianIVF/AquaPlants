@@ -4,20 +4,21 @@ AquaBrain — Simulador IoT para AquaPlants
 Envía mediciones simuladas a la API REST de AquaPlants.
 
 Características:
-  * Descubre AUTOMÁTICAMENTE las instalaciones y sus sensores ACTIVOS vía API
-    (ya no hay UUIDs escritos a mano). Si activas/desactivas sensores desde el
-    dashboard, el simulador lo detecta en la siguiente re-sincronización.
+  * Descubre AUTOMÁTICAMENTE invernaderos, torres/instalaciones (incluidas las
+    independientes sin invernadero), plantas activas y sus sensores activos vía API.
+  * Se adapta en caliente si falta una torre, si creas nuevas plantas
+    independientes/testigo o si desactivas un invernadero/torre/planta.
   * Valores realistas por variable con "caminata aleatoria" (cambios suaves).
   * Anomalías ocasionales fuera de rango para probar las reglas de alerta.
   * Fallos de conexión simulados (estado_conexion = False).
-  * Salida alineada con la estructura sugerida en la pauta (punto 5):
-    id_sistema, id_dispositivo, id_sensor, tipo_variable, valor, unidad,
-    timestamp, estado_conexion, alerta.
 
 Uso:
-  python simulador_iot.py                                  # local, todas las instalaciones
+  python simulador_iot.py                                  # local, todo lo activo
   python simulador_iot.py --url https://fabianvidal.pythonanywhere.com
-  python simulador_iot.py --instalacion "Instalacion1" --intervalo 3
+  python simulador_iot.py --invernadero "Invernadero Norte"
+  python simulador_iot.py --instalacion "Huerto1A" --intervalo 3
+  python simulador_iot.py --planta "T1-A01"
+  python simulador_iot.py --solo-plantas                   # solo sensores de plantas
   python simulador_iot.py --anomalias 0.2 --fallos 0.05
   (En el instituto: python311\\python.exe simulador_iot.py ...)
 """
@@ -37,10 +38,6 @@ except Exception:
 
 # ============================================================
 # PERFILES REALISTAS POR VARIABLE (hidroponía)
-#   normal  : rango típico de operación
-#   anomalo : rango fuera de lo normal (para disparar alertas)
-#   paso    : variación máxima entre lecturas consecutivas
-#   limite  : límites físicos absolutos (nunca se envía fuera de esto)
 # ============================================================
 PERFILES = {
     "temperatura_agua": {
@@ -89,8 +86,16 @@ def leer_argumentos():
                    help="URL base del servidor (sin /api/). Ej: https://fabianvidal.pythonanywhere.com")
     p.add_argument("--usuario", default=os.getenv("AQUA_IOT_USER", "iot_device"))
     p.add_argument("--password", default=os.getenv("AQUA_IOT_PASSWORD", "AquaSecret2026!"))
+    p.add_argument("--invernadero", default=None,
+                   help="Nombre o UUID de un invernadero. Filtra las torres que pertenecen a él.")
     p.add_argument("--instalacion", default=None,
-                   help="Nombre o UUID de una instalación. Si se omite, simula todas las activas.")
+                   help="Nombre o UUID de una torre/instalación. Si se omite, simula todas las activas.")
+    p.add_argument("--planta", default=None,
+                   help="Código o UUID de una planta específica con sensores propios.")
+    p.add_argument("--solo-plantas", action="store_true",
+                   help="Envía lecturas únicamente a sensores propios de plantas (plantas testigo/macetas).")
+    p.add_argument("--solo-torres", action="store_true",
+                   help="Envía lecturas únicamente a sensores generales de torre/instalación.")
     p.add_argument("--intervalo", type=float, default=4.0, help="Segundos entre ciclos (def: 4)")
     p.add_argument("--anomalias", type=float, default=0.08,
                    help="Probabilidad (0-1) de enviar un valor anómalo (def: 0.08)")
@@ -108,8 +113,10 @@ class SimuladorAquaBrain:
         self.base = args.url.rstrip("/")
         self.session = requests.Session()
         self.session.auth = (args.usuario, args.password)
-        self.sensores = []     # lista de dicts devueltos por /api/sensores/
-        self.ultimo = {}       # id_sensor -> último valor (para la caminata aleatoria)
+        self.sensores = []
+        self.instalaciones_map = {}
+        self.ultimo = {}
+        self.forzar_resync = False
 
     # ---------------------------------------------------------- API helpers
     def _get_todo(self, ruta, params=None):
@@ -127,25 +134,112 @@ class SimuladorAquaBrain:
                 url = None
         return datos
 
+    def _get_opcional(self, ruta, params=None):
+        """GET tolerante a servidores antiguos o endpoints sin permiso de lectura."""
+        try:
+            return self._get_todo(ruta, params=params)
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code in (403, 404):
+                return None
+            raise
+
     def sincronizar(self):
-        """Descubre instalaciones activas y sus sensores activos."""
-        instalaciones = [i for i in self._get_todo("/api/instalaciones/") if i.get("activa", True)]
+        """
+        Descubre invernaderos, torres/instalaciones (incluidas las independientes),
+        plantas activas y sensores activos, adaptándose si falta alguna torre o planta.
+        """
+        invernaderos = self._get_opcional("/api/invernaderos/")
+        inv_activos_ids = None
+        inv_map = {}
+        if invernaderos is not None:
+            inv_map = {str(inv["id"]): inv for inv in invernaderos}
+            inv_activos_ids = {str(inv["id"]) for inv in invernaderos if inv.get("activa", True)}
+
+        instalaciones_raw = self._get_todo("/api/instalaciones/")
+        instalaciones = [i for i in instalaciones_raw if i.get("activa", True)]
+
+        # Si el invernadero padre está desactivado, omitir sus torres (las independientes sin invernadero siguen)
+        if inv_activos_ids is not None:
+            instalaciones = [
+                i for i in instalaciones
+                if not i.get("invernadero") or str(i["invernadero"]) in inv_activos_ids
+            ]
+
+        if self.args.invernadero:
+            filtro_inv = self.args.invernadero.lower()
+            instalaciones = [
+                i for i in instalaciones
+                if (i.get("invernadero_nombre") or "").lower() == filtro_inv
+                or str(i.get("invernadero") or "").lower() == filtro_inv
+            ]
+
         if self.args.instalacion:
-            filtro = self.args.instalacion.lower()
-            instalaciones = [i for i in instalaciones
-                             if i["nombre"].lower() == filtro or str(i["id"]).lower() == filtro]
-            if not instalaciones:
-                raise SystemExit(f"❌ No se encontró una instalación activa llamada '{self.args.instalacion}'.")
+            filtro_inst = self.args.instalacion.lower()
+            instalaciones = [
+                i for i in instalaciones
+                if i["nombre"].lower() == filtro_inst or str(i["id"]).lower() == filtro_inst
+            ]
 
-        ids = {str(i["id"]) for i in instalaciones}
-        sensores = self._get_todo("/api/sensores/", params={"activo": "true"})
-        self.sensores = [s for s in sensores if str(s["instalacion"]) in ids]
+        self.instalaciones_map = {str(i["id"]): i for i in instalaciones}
+        ids_inst = set(self.instalaciones_map.keys())
 
-        print(f"🔄 Sincronizado: {len(instalaciones)} instalación(es), {len(self.sensores)} sensor(es) activo(s)")
+        plantas_raw = self._get_opcional("/api/plantas/", params={"activa": "true"})
+        plantas_activas_ids = None
+        if plantas_raw is not None:
+            plantas_activas_ids = {
+                str(p["id"]) for p in plantas_raw
+                if p.get("activa", True) and str(p.get("instalacion")) in ids_inst
+            }
+
+        sensores_raw = self._get_todo("/api/sensores/", params={"activo": "true"})
+        filtrados = []
+        for s in sensores_raw:
+            if str(s["instalacion"]) not in ids_inst:
+                continue
+
+            planta_id = s.get("planta")
+            # Si hay plantas registradas, ignorar sensores de plantas desactivadas/inexistentes
+            if planta_id is not None and plantas_activas_ids is not None:
+                if str(planta_id) not in plantas_activas_ids:
+                    continue
+
+            if self.args.solo_plantas and not planta_id:
+                continue
+            if self.args.solo_torres and planta_id:
+                continue
+            if self.args.planta:
+                f_planta = self.args.planta.lower()
+                codigo = (s.get("planta_codigo") or "").lower()
+                if codigo != f_planta and str(planta_id or "").lower() != f_planta:
+                    continue
+
+            filtrados.append(s)
+
+        self.sensores = filtrados
+        sensores_torre = sum(1 for s in self.sensores if not s.get("planta"))
+        sensores_planta = sum(1 for s in self.sensores if s.get("planta"))
+        independientes = sum(1 for i in instalaciones if not i.get("invernadero"))
+
+        print(
+            f"🔄 Sincronizado: {len(instalaciones)} torre(s) "
+            f"({independientes} independiente(s)) · "
+            f"{len(self.sensores)} sensor(es) activo(s) "
+            f"[{sensores_torre} de torre, {sensores_planta} de planta]"
+        )
+        if not instalaciones:
+            print("   ⚠️  No hay torres activas que coincidan con el filtro; esperando en línea...")
+        elif not self.sensores:
+            print("   ⚠️  Torres detectadas sin sensores activos aún; esperando configuración...")
+
         for s in self.sensores:
             icono = PERFILES.get(s["tipo"], PERFIL_GENERICO)["icono"]
-            destino = s.get("planta_codigo") or "Ambiental"
-            print(f"   {icono}  {s.get('instalacion_nombre', ''):15} · {destino:12} · {s['tipo']:16}")
+            inst = self.instalaciones_map.get(str(s["instalacion"]), {})
+            inv_id = str(inst.get("invernadero") or "")
+            inv_nombre = inst.get("invernadero_nombre") or (
+                inv_map[inv_id]["nombre"] if inv_id in inv_map else "Independiente"
+            )
+            destino = s.get("planta_codigo") or "Torre/Ambiental"
+            print(f"   {icono}  {inv_nombre:16} · {s.get('instalacion_nombre', ''):14} · {destino:15} · {s['tipo']}")
         print()
 
     # ---------------------------------------------------------- generación
@@ -155,11 +249,10 @@ class SimuladorAquaBrain:
         lim_lo, lim_hi = perfil["limite"]
 
         if random.random() < self.args.anomalias:
-            valor = random.uniform(*perfil["anomalo"])          # pico anómalo
+            valor = random.uniform(*perfil["anomalo"])
         else:
             previo = self.ultimo.get(sensor["id"], random.uniform(lo, hi))
             valor = previo + random.uniform(-perfil["paso"], perfil["paso"])
-            # Mantener la caminata dentro del rango normal (rebote suave)
             if valor < lo or valor > hi:
                 valor = previo - (valor - previo)
             valor = min(max(valor, lo), hi)
@@ -186,9 +279,11 @@ class SimuladorAquaBrain:
         if r.status_code == 201:
             d = r.json()
             estado = "🟢" if d.get("estado_conexion") else "🔴 FALLO"
-            etiqueta = f"{sensor.get('planta_codigo')} · " if sensor.get("planta_codigo") else ""
+            torre = sensor.get("instalacion_nombre") or ""
+            planta = sensor.get("planta_codigo")
+            etiqueta = f"{torre}/{planta}" if planta else f"{torre or 'Sistema'}"
             linea = (
-                f"  [201] {perfil['icono']}  {etiqueta}{d.get('tipo_variable', sensor['tipo']):16} "
+                f"  [201] {perfil['icono']}  {etiqueta:22} · {d.get('tipo_variable', sensor['tipo']):16} "
                 f"{d.get('valor')} {d.get('unidad', '')}  {estado}"
             )
             print(linea)
@@ -198,9 +293,8 @@ class SimuladorAquaBrain:
                     print(f"        🚨 {a}")
         elif r.status_code in (401, 403):
             print(f"  [{r.status_code}] 🔴 Credenciales o permisos inválidos para '{self.args.usuario}'.")
-        elif r.status_code == 400:
-            print(f"  [400] 🟡 {sensor['tipo']}: {r.text[:150]}")
-            # Posiblemente el sensor fue desactivado: forzar re-sincronización
+        elif r.status_code in (400, 404):
+            print(f"  [{r.status_code}] 🟡 {sensor['tipo']}: recurso inactivo o eliminado; re-sincronizando...")
             self.forzar_resync = True
         else:
             print(f"  [{r.status_code}] ⚠️  {sensor['tipo']}: {r.text[:100]}")
@@ -230,9 +324,12 @@ class SimuladorAquaBrain:
             self.forzar_resync = False
             print(f"── Ciclo #{ciclo}  {time.strftime('%H:%M:%S')} " + "─" * 36)
             if not self.sensores:
-                print("  (sin sensores activos; activa alguno desde ✏️ Editar Instalación)")
+                print("  (sin sensores activos; esperando nuevas torres o plantas desde el dashboard...)")
+                self.forzar_resync = True
             for s in self.sensores:
                 self.enviar(s)
+                if self.forzar_resync:
+                    break
                 time.sleep(0.2)
             print()
 
