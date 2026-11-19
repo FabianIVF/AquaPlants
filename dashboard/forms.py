@@ -273,8 +273,11 @@ class PlantaForm(forms.ModelForm):
         choices=OPCIONES_SENSORES_PLANTA,
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         required=False,
-        label="Sensores Propios de la Planta",
-        help_text="Cada sensor seleccionado generará y enviará lecturas individuales para esta planta.",
+        label="Sensores Propios (Opcional — solo planta testigo o maceta aislada)",
+        help_text=(
+            "Marca sensores solo si esta planta tiene sondas propias. "
+            "Si los dejas desmarcados, heredará automáticamente el monitoreo de su instalación/torre."
+        ),
     )
 
     class Meta:
@@ -308,7 +311,7 @@ class PlantaForm(forms.ModelForm):
             activos = list(self.instance.sensores.filter(activo=True).values_list('tipo', flat=True))
             self.fields['sensores_planta'].initial = activos
         else:
-            self.fields['sensores_planta'].initial = ['humedad_sustrato', 'ph_sustrato', 'temperatura_raiz']
+            self.fields['sensores_planta'].initial = []
 
     def clean_codigo(self):
         codigo = self.cleaned_data['codigo'].strip()

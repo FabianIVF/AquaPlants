@@ -22,9 +22,10 @@
     <div class="panel mb-4">
         <div class="panel-head">
             <div>
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-2">
                     <h2 class="panel-title" style="font-size:1.1rem;">{{ planta.codigo }} &middot; {{ planta.especie }}</h2>
                     <span id="diag-estado" class="status {{ resumen.estado_css }}">{{ resumen.estado_label }}</span>
+                    <span class="tag">{{ resumen.origen_label }}</span>
                 </div>
                 <p class="panel-sub">
                     {% if planta.variedad %}Variedad: {{ planta.variedad }} &middot; {% endif %}
@@ -94,7 +95,7 @@
         </div>
         {% empty %}
         <div class="col-12">
-            <div class="notice">Esta planta no tiene sensores activos asignados. Edita la planta para activarlos.</div>
+            <div class="notice">Esta planta no tiene sensores propios ni la instalación tiene sensores activos configurados.</div>
         </div>
         {% endfor %}
     </div>
@@ -147,12 +148,30 @@ const URL_LIVE  = "{% url 'api_planta_live' instalacion.pk planta.pk %}";
 const INTERVALO = 5000;
 
 const COLORES = {
+    temperatura_agua : { borde: '#4aa3b5', fondo: 'rgba(74,163,181,0.08)' },
+    temperatura_aire : { borde: '#d28a5a', fondo: 'rgba(210,138,90,0.08)' },
+    temperatura      : { borde: '#d28a5a', fondo: 'rgba(210,138,90,0.08)' },
+    humedad          : { borde: '#5b8fd0', fondo: 'rgba(91,143,208,0.08)' },
+    ph               : { borde: '#9a7bc4', fondo: 'rgba(154,123,196,0.08)' },
+    caudal           : { borde: '#4fa38f', fondo: 'rgba(79,163,143,0.08)' },
+    nivel_estanque   : { borde: '#6f7fcf', fondo: 'rgba(111,127,207,0.08)' },
+    co2              : { borde: '#8b95a5', fondo: 'rgba(139,149,165,0.08)' },
+    fotoperiodo      : { borde: '#c9a43b', fondo: 'rgba(201,164,59,0.08)' },
     humedad_sustrato : { borde: '#5b8fd0', fondo: 'rgba(91,143,208,0.08)' },
     ph_sustrato      : { borde: '#9a7bc4', fondo: 'rgba(154,123,196,0.08)' },
     temperatura_raiz : { borde: '#4aa3b5', fondo: 'rgba(74,163,181,0.08)' },
 };
 
 const ETIQUETAS = {
+    temperatura_agua : 'Temperatura del agua',
+    temperatura_aire : 'Temperatura del aire',
+    temperatura      : 'Temperatura general',
+    humedad          : 'Humedad ambiental',
+    ph               : 'pH solución',
+    caudal           : 'Caudal',
+    nivel_estanque   : 'Nivel del estanque',
+    co2              : 'CO2',
+    fotoperiodo      : 'Fotoperiodo',
     humedad_sustrato : 'Humedad de sustrato',
     ph_sustrato      : 'pH de raíz',
     temperatura_raiz : 'Temperatura de raíz',

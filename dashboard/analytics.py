@@ -215,3 +215,34 @@ def resumen_sensores(sensores, limite_lecturas=30):
         'recomendaciones': recomendaciones,
         'sensores_detalle': sensores_detalle,
     }
+
+
+def resumen_planta(planta, limite_lecturas=30):
+    """
+    Calcula el diagnóstico de una planta:
+    - Si tiene sensores propios activos (planta testigo / maceta individual), usa sus propios sensores.
+    - Si no tiene sensores propios, hereda automáticamente los sensores de su instalación/torre.
+    """
+    sensores_propios = list(planta.sensores.filter(activo=True))
+    if sensores_propios:
+        resumen = resumen_sensores(sensores_propios, limite_lecturas=limite_lecturas)
+        resumen['origen_datos'] = 'propios'
+        resumen['origen_label'] = 'Planta testigo (sensores propios)'
+        return resumen
+
+    sensores_torre = list(planta.instalacion.sensores.filter(activo=True, planta__isnull=True))
+    resumen = resumen_sensores(sensores_torre, limite_lecturas=limite_lecturas)
+    resumen['origen_datos'] = 'compartidos'
+    resumen['origen_label'] = 'Torre compartida (hereda sensores del sistema)'
+
+    if planta.etapa == 'germinacion' and resumen['estado'] in ('atencion', 'critico'):
+        resumen['recomendaciones'].append(
+            'Etapa germinación: mayor sensibilidad, mantener estabilidad de agua y temperatura en la torre.'
+        )
+    elif planta.etapa == 'cosecha' and resumen['estado'] == 'optimo':
+        resumen['recomendaciones'].append(
+            'Planta en etapa de cosecha con parámetros estables en la torre.'
+        )
+
+    return resumen
+

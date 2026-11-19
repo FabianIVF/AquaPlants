@@ -12,7 +12,7 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 
 from telemetria.models import Instalacion, Planta, Sensor, Medicion, ReglaAlerta, AlertaGenerada
-from dashboard.analytics import resumen_sensores
+from dashboard.analytics import resumen_planta, resumen_sensores
 from dashboard.forms import ReglaAlertaForm, InstalacionForm
 
 
@@ -575,3 +575,33 @@ class PlantasYAnaliticaTestCase(TestCase):
         data = resp.json()
         self.assertEqual(data['resumen']['estado'], 'critico')
         self.assertEqual(data['sensores']['ph_sustrato']['mediciones'][0]['valor'], 8.2)
+
+    def test_planta_sin_sensores_hereda_diagnostico_y_live_de_torre(self):
+        """Una planta en torre compartida (sin sensores propios) hereda el estado y live de su instalación."""
+        sensor_torre = Sensor.objects.create(
+            instalacion=self.instalacion,
+            planta=None,
+            tipo='ph',
+            modelo_hardware='Sonda pH Estanque',
+            activo=True,
+        )
+        Medicion.objects.create(sensor=sensor_torre, valor=7.90, estado_conexion=True)
+
+        planta = Planta.objects.create(
+            instalacion=self.instalacion,
+            codigo='T2-C01',
+            especie='Lechuga',
+            fecha_siembra=timezone.localdate() - timedelta(days=3),
+            etapa='germinacion',
+        )
+        resumen = resumen_planta(planta)
+        self.assertEqual(resumen['origen_datos'], 'compartidos')
+        self.assertEqual(resumen['estado'], 'critico')
+        self.assertTrue(any('germinación' in r.lower() for r in resumen['recomendaciones']))
+
+        self.client.login(username='cult_plantas', password='Pass1234!')
+        resp = self.client.get(f'/dashboard/instalacion/{self.instalacion.pk}/plantas/{planta.pk}/live/')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['resumen']['origen_datos'], 'compartidos')
+        self.assertEqual(data['sensores']['ph']['mediciones'][0]['valor'], 7.9)

@@ -36,7 +36,11 @@
                     <div class="d-flex flex-wrap gap-1 my-2">
                         <span class="tag">{{ p.get_etapa_display }}</span>
                         {% if p.posicion %}<span class="tag">{{ p.posicion }}</span>{% endif %}
-                        <span class="tag">{{ item.num_sensores }} sensor(es)</span>
+                        {% if res.origen_datos == 'propios' %}
+                            <span class="tag"><i class="bi bi-cpu me-1"></i>Planta testigo ({{ item.num_sensores }})</span>
+                        {% else %}
+                            <span class="tag"><i class="bi bi-diagram-3 me-1"></i>Torre compartida</span>
+                        {% endif %}
                     </div>
 
                     <div class="row g-2 my-2 text-center">

@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from telemetria.models import AlertaGenerada, Instalacion, Medicion, Planta, ReglaAlerta, Sensor
-from .analytics import resumen_sensores
+from .analytics import resumen_planta, resumen_sensores
 from .forms import InstalacionForm, PlantaForm, ReglaAlertaForm, UsuarioForm
 
 
@@ -144,7 +144,7 @@ def inicio_dashboard(request):
 
         riesgo_inst = 0
         for p in plantas:
-            res_p = resumen_sensores(p.sensores.filter(activo=True))
+            res_p = resumen_planta(p)
             if res_p['estado'] in ('atencion', 'critico'):
                 riesgo_inst += 1
         plantas_en_riesgo += riesgo_inst
@@ -274,12 +274,12 @@ def lista_plantas(request, instalacion_id):
 
     fichas = []
     for planta in plantas:
-        sensores = planta.sensores.filter(activo=True)
-        resumen = resumen_sensores(sensores)
+        sensores_propios = planta.sensores.filter(activo=True)
+        resumen = resumen_planta(planta)
         fichas.append({
             'planta': planta,
             'resumen': resumen,
-            'num_sensores': sensores.count(),
+            'num_sensores': sensores_propios.count(),
         })
 
     contexto = {
@@ -358,12 +358,20 @@ def eliminar_planta(request, instalacion_id, planta_id):
     return render(request, 'dashboard/confirmar_eliminar.html', contexto)
 
 
+def _sensores_efectivos_planta(planta):
+    """Retorna los sensores propios de la planta o, en su defecto, los compartidos de su instalación."""
+    propios = list(planta.sensores.filter(activo=True))
+    if propios:
+        return propios
+    return list(planta.instalacion.sensores.filter(activo=True, planta__isnull=True))
+
+
 @login_required(login_url='login')
 def detalle_planta(request, instalacion_id, planta_id):
     instalacion = _obtener_instalacion_autorizada(request.user, instalacion_id)
     planta = get_object_or_404(Planta, pk=planta_id, instalacion=instalacion)
-    sensores = list(planta.sensores.filter(activo=True))
-    resumen = resumen_sensores(sensores)
+    sensores = _sensores_efectivos_planta(planta)
+    resumen = resumen_planta(planta)
     reglas = ReglaAlerta.objects.filter(sensor__in=sensores).select_related('sensor')
 
     contexto = {
@@ -382,8 +390,20 @@ def detalle_planta(request, instalacion_id, planta_id):
 def api_planta_live(request, instalacion_id, planta_id):
     instalacion = _obtener_instalacion_autorizada(request.user, instalacion_id)
     planta = get_object_or_404(Planta, pk=planta_id, instalacion=instalacion)
-    sensores = planta.sensores.filter(activo=True)
-    return JsonResponse(_construir_payload_live(sensores, f"{instalacion.nombre} · {planta.codigo}"))
+    sensores = _sensores_efectivos_planta(planta)
+    payload = _construir_payload_live(sensores, f"{instalacion.nombre} · {planta.codigo}")
+    res_p = resumen_planta(planta)
+    payload['resumen'].update({
+        'estado': res_p['estado'],
+        'estado_label': res_p['estado_label'],
+        'estado_css': res_p['estado_css'],
+        'porcentaje_en_rango': res_p['porcentaje_en_rango'],
+        'tendencia': res_p['tendencia'],
+        'recomendaciones': res_p['recomendaciones'],
+        'origen_datos': res_p['origen_datos'],
+        'origen_label': res_p['origen_label'],
+    })
+    return JsonResponse(payload)
 
 
 # ============================================================
