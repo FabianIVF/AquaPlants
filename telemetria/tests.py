@@ -375,6 +375,10 @@ class SeguridadPunto6TestCase(TestCase):
         # Administrador por grupo accede a instalaciones y reglas (propias y ajenas)
         client.login(username='admin_grupo', password='Pass1234!')
         self.assertEqual(client.get('/dashboard/instalacion/crear/').status_code, 200)
+        resp_cfg = client.get(f'/dashboard/instalacion/{instalacion.pk}/editar/')
+        self.assertEqual(resp_cfg.status_code, 200)
+        self.assertContains(resp_cfg, 'Sensores ambientales monitoreados')
+        self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/alertas/').status_code, 200)
         self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion.pk}/regla/crear/').status_code, 200)
         self.assertEqual(client.get(f'/dashboard/instalacion/{instalacion_ajena.pk}/').status_code, 200)
 

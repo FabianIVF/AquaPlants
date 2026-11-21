@@ -2,134 +2,199 @@
 
 {% block title %}Plantas — {{ instalacion.nombre }}{% endblock %}
 
+{% block main_class %}cockpit-main{% endblock %}
+
+{% block extra_head %}
+<style>
+    .planta-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.55fr) auto;
+        gap: 0.85rem;
+        align-items: center;
+        padding: 0.7rem 0.95rem;
+        border-bottom: 1px solid var(--ap-border);
+        border-left: 3px solid var(--ap-border-strong);
+        transition: background-color .15s;
+    }
+    .planta-row:last-child { border-bottom: 0; }
+    .planta-row:hover { background: rgba(255, 255, 255, 0.015); }
+    .planta-row.sev-critico { border-left-color: var(--ap-danger); }
+    .planta-row.sev-atencion { border-left-color: var(--ap-warning); }
+    .planta-row.sev-optimo { border-left-color: var(--ap-accent); }
+
+    .planta-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.45rem;
+    }
+    .planta-stat {
+        padding: 0.38rem 0.5rem;
+        border-radius: 6px;
+        background: var(--ap-surface-2);
+        border: 1px solid var(--ap-border);
+        text-align: center;
+    }
+    .planta-stat .stat-label { font-size: 0.62rem; }
+    .planta-stat .num { font-size: 0.86rem; font-weight: 600; }
+    .planta-stat-sub { font-size: 0.66rem; color: var(--ap-muted); }
+
+    @media (max-width: 991.98px) {
+        .planta-row { grid-template-columns: 1fr; gap: 0.6rem; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
     {% include "dashboard/_instalacion_nav.html" %}
 
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <div>
-            <h2 class="panel-title" style="font-size:1.05rem;">Plantas monitoreadas en {{ instalacion.nombre }}</h2>
-            <p class="panel-sub">Ordenadas por prioridad de atención: las plantas en estado crítico o al límite aparecen primero.</p>
-        </div>
-        {% if perms.telemetria.add_planta %}
-        <a href="{% url 'crear_planta' instalacion.pk %}" class="btn btn-primary-ap btn-sm">
-            <i class="bi bi-plus-lg"></i>Agregar planta
-        </a>
-        {% endif %}
-    </div>
-
-    <div class="d-flex flex-column gap-3">
-        {% for item in fichas %}
-        {% with p=item.planta res=item.resumen %}
-        <div class="panel" style="border-left: 3px solid {% if res.estado == 'critico' %}var(--ap-danger){% elif res.estado == 'atencion' %}var(--ap-warning){% elif res.estado == 'optimo' %}var(--ap-accent){% else %}var(--ap-border-strong){% endif %};">
-            <div class="panel-body py-3 px-4">
-                <div class="row g-3 align-items-center">
-                    <!-- Identidad y estado -->
-                    <div class="col-12 col-lg-4">
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                            <h3 class="panel-title mb-0" style="font-size:1.02rem;">{{ p.codigo }}</h3>
-                            <span class="status {{ res.estado_css }}">{{ res.estado_label }}</span>
-                            {% if p.lista_para_cosechar %}
-                            <span class="status status-ok" style="padding:0.18rem 0.5rem;">Lista para cosechar</span>
-                            {% elif res.pre_cosecha %}
-                            <span class="status status-warn" style="padding:0.18rem 0.5rem;">Pre-cosecha ({{ p.dias_para_cosecha }}d)</span>
-                            {% endif %}
-                        </div>
-                        <div class="t-muted mb-2" style="font-size:0.82rem;">
-                            {{ p.especie_nombre }}{% if p.variedad %} &middot; {{ p.variedad }}{% endif %}
-                            {% if p.posicion %} &middot; {{ p.posicion }}{% endif %}
-                        </div>
-                        <div class="d-flex flex-wrap gap-1">
-                            <span class="tag">{{ p.get_etapa_display }}</span>
-                            {% if res.origen_datos == 'propios' %}
-                                <span class="tag"><i class="bi bi-cpu me-1"></i>Planta testigo ({{ item.num_sensores }})</span>
-                            {% else %}
-                                <span class="tag"><i class="bi bi-diagram-3 me-1"></i>Torre compartida</span>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Indicadores agronómicos y diagnóstico -->
-                    <div class="col-12 col-lg-5">
-                        <div class="row g-2 mb-2 text-center">
-                            <div class="col-4">
-                                <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                    <div class="stat-label">{% if p.dias_desde_siembra > p.dias_en_torre %}Edad est.{% else %}Plantada{% endif %}</div>
-                                    <div class="fw-semibold num" style="font-size:0.95rem;">Día {{ p.dias_desde_siembra }}</div>
-                                    <div class="t-muted num" style="font-size:0.68rem;">
-                                        {% if p.dias_desde_siembra > p.dias_en_torre %}En torre: {{ p.dias_en_torre }}d{% else %}{{ p.fecha_siembra|date:"d/m/Y" }}{% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                    <div class="stat-label">Cosecha aprox.</div>
-                                    <div class="fw-semibold num" style="font-size:0.95rem;">
-                                        {% if p.dias_para_cosecha == 0 %}Hoy{% else %}{{ p.dias_para_cosecha }} d{% endif %}
-                                    </div>
-                                    <div class="t-muted num" style="font-size:0.68rem;">{{ p.fecha_estimada_cosecha|date:"d/m/Y" }}</div>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
-                                    <div class="stat-label">En rango</div>
-                                    <div class="fw-semibold num" style="font-size:0.95rem;">
-                                        {% if res.porcentaje_en_rango is not None %}{{ res.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
-                                    </div>
-                                    <div class="t-muted num" style="font-size:0.68rem;">Ciclo {{ p.dias_ciclo }}d</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mb-2">
-                            <div class="d-flex justify-content-between t-muted num" style="font-size:0.7rem;margin-bottom:0.2rem;">
-                                <span>Progreso de cultivo</span>
-                                <span>{{ p.progreso_cosecha }}%</span>
-                            </div>
-                            <div class="progress" style="height:5px;background:var(--ap-surface-2);">
-                                <div class="progress-bar" role="progressbar" style="width:{{ p.progreso_cosecha }}%;background:var(--ap-accent);" aria-valuenow="{{ p.progreso_cosecha }}" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                        </div>
-
-                        <div class="t-muted" style="font-size:0.79rem;">
-                            <i class="bi bi-lightbulb me-1"></i>{{ res.recomendaciones.0 }}
-                        </div>
-                        {% if res.aviso_cosecha and res.aviso_cosecha != res.recomendaciones.0 %}
-                        <div class="t-muted mt-1" style="font-size:0.75rem;">
-                            <i class="bi bi-calendar2-check me-1"></i>{{ res.aviso_cosecha }}
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Acciones -->
-                    <div class="col-12 col-lg-3">
-                        <div class="d-flex flex-row flex-lg-column gap-2 justify-content-lg-end">
-                            <a href="{% url 'detalle_planta' instalacion.pk p.pk %}" class="btn btn-primary-ap btn-sm flex-fill">
-                                <i class="bi bi-activity"></i>Ver telemetría en vivo
-                            </a>
-                            {% if perms.telemetria.change_planta or perms.telemetria.delete_planta %}
-                            <div class="d-flex gap-2">
-                                {% if perms.telemetria.change_planta %}
-                                <a href="{% url 'editar_planta' instalacion.pk p.pk %}" class="btn btn-ghost btn-sm flex-fill">
-                                    <i class="bi bi-pencil"></i>Editar
-                                </a>
-                                {% endif %}
-                                {% if perms.telemetria.delete_planta %}
-                                <a href="{% url 'eliminar_planta' instalacion.pk p.pk %}" class="btn btn-ghost-danger btn-sm flex-fill">
-                                    <i class="bi bi-trash3"></i>Eliminar
-                                </a>
-                                {% endif %}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
+    <!-- Barra Cockpit de estado y filtros rápidos -->
+    <div class="cockpit-bar">
+        <div class="cockpit-kpis">
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Plantas</span>
+                <strong class="num">{{ fichas|length }}</strong>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">En riesgo</span>
+                <span class="status {% if num_riesgo > 0 %}status-err{% else %}status-ok{% endif %} num">{{ num_riesgo }}</span>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Óptimas</span>
+                <strong class="t-accent num">{{ num_optimas }}</strong>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Pre-cosecha</span>
+                <strong class="num">{{ num_precosecha }}</strong>
             </div>
         </div>
-        {% endwith %}
 
-        {% empty %}
-        <div class="panel">
-            <div class="panel-body text-center py-5">
+        <div class="cockpit-controls">
+            <div class="d-flex flex-wrap gap-1" id="plantas-filtros">
+                <button type="button" class="cockpit-pill active" data-filtro="todas">Todas</button>
+                <button type="button" class="cockpit-pill" data-filtro="riesgo">En riesgo</button>
+                <button type="button" class="cockpit-pill" data-filtro="precosecha">Pre-cosecha</button>
+                <button type="button" class="cockpit-pill" data-filtro="testigo">Testigo</button>
+            </div>
+            <input type="search" id="plantas-buscar" class="form-control form-control-sm" style="width:170px;" placeholder="Buscar código o especie...">
+            {% if perms.telemetria.add_planta %}
+            <a href="{% url 'crear_planta' instalacion.pk %}" class="btn btn-primary-ap btn-sm">
+                <i class="bi bi-plus-lg"></i>Agregar planta
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Lista horizontal contenida en una pantalla -->
+    <div class="panel">
+        <div class="panel-head py-2 px-3">
+            <div>
+                <h2 class="panel-title">Control agronómico de plantas</h2>
+                <p class="panel-sub">Ordenadas automáticamente por severidad y prioridad de cosecha.</p>
+            </div>
+            <span id="plantas-visibles" class="tag num">{{ fichas|length }} visible(s)</span>
+        </div>
+
+        <div class="cockpit-scroll" id="plantas-contenedor">
+            {% for item in fichas %}
+            {% with p=item.planta res=item.resumen %}
+            <div
+                class="planta-row sev-{{ res.estado }}"
+                data-estado="{{ res.estado }}"
+                data-precosecha="{% if p.lista_para_cosechar or res.pre_cosecha %}1{% else %}0{% endif %}"
+                data-testigo="{% if res.origen_datos == 'propios' %}1{% else %}0{% endif %}"
+                data-texto="{{ p.codigo|lower }} {{ p.especie_nombre|lower }} {{ p.variedad|lower }} {{ p.posicion|lower }}"
+            >
+                <!-- Identidad y etiquetas -->
+                <div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <strong style="font-size:0.96rem;">{{ p.codigo }}</strong>
+                        <span class="status {{ res.estado_css }}" style="font-size:0.68rem;">{{ res.estado_label }}</span>
+                        {% if p.lista_para_cosechar %}
+                        <span class="status status-ok" style="padding:0.16rem 0.45rem;font-size:0.66rem;">Lista para cosechar</span>
+                        {% elif res.pre_cosecha %}
+                        <span class="status status-warn" style="padding:0.16rem 0.45rem;font-size:0.66rem;">Pre-cosecha ({{ p.dias_para_cosecha }}d)</span>
+                        {% endif %}
+                    </div>
+                    <div class="t-muted mb-1" style="font-size:0.78rem;">
+                        {{ p.especie_nombre }}{% if p.variedad %} &middot; {{ p.variedad }}{% endif %}
+                        {% if p.posicion %} &middot; {{ p.posicion }}{% endif %}
+                    </div>
+                    <div class="d-flex flex-wrap gap-1">
+                        <span class="tag" style="font-size:0.68rem;">{{ p.get_etapa_display }}</span>
+                        {% if res.origen_datos == 'propios' %}
+                            <span class="tag" style="font-size:0.68rem;"><i class="bi bi-cpu me-1"></i>Planta testigo ({{ item.num_sensores }})</span>
+                        {% else %}
+                            <span class="tag" style="font-size:0.68rem;"><i class="bi bi-diagram-3 me-1"></i>Torre compartida</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Métricas compactas, progreso y aviso -->
+                <div>
+                    <div class="planta-metrics mb-1">
+                        <div class="planta-stat">
+                            <div class="stat-label">{% if p.dias_desde_siembra > p.dias_en_torre %}Edad est.{% else %}Plantada{% endif %}</div>
+                            <div class="num">Día {{ p.dias_desde_siembra }}</div>
+                            <div class="planta-stat-sub num">
+                                {% if p.dias_desde_siembra > p.dias_en_torre %}En torre: {{ p.dias_en_torre }}d{% else %}{{ p.fecha_siembra|date:"d/m/Y" }}{% endif %}
+                            </div>
+                        </div>
+                        <div class="planta-stat">
+                            <div class="stat-label">Cosecha aprox.</div>
+                            <div class="num">{% if p.dias_para_cosecha == 0 %}Hoy{% else %}{{ p.dias_para_cosecha }} d{% endif %}</div>
+                            <div class="planta-stat-sub num">{{ p.fecha_estimada_cosecha|date:"d/m/Y" }}</div>
+                        </div>
+                        <div class="planta-stat">
+                            <div class="stat-label">En rango</div>
+                            <div class="num">{% if res.porcentaje_en_rango is not None %}{{ res.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}</div>
+                            <div class="planta-stat-sub num">Ciclo {{ p.dias_ciclo }}d</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <div class="progress flex-grow-1" style="height:4px;background:var(--ap-surface-2);">
+                            <div class="progress-bar" role="progressbar" style="width:{{ p.progreso_cosecha }}%;background:var(--ap-accent);" aria-valuenow="{{ p.progreso_cosecha }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span class="t-muted num" style="font-size:0.68rem;">{{ p.progreso_cosecha }}%</span>
+                    </div>
+
+                    <div class="t-muted" style="font-size:0.75rem;line-height:1.3;">
+                        <i class="bi bi-lightbulb me-1"></i>{{ res.recomendaciones.0 }}
+                    </div>
+                    {% if res.aviso_cosecha and res.aviso_cosecha != res.recomendaciones.0 %}
+                    <div class="t-muted" style="font-size:0.72rem;line-height:1.3;">
+                        <i class="bi bi-calendar2-check me-1"></i>{{ res.aviso_cosecha }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Acciones rápidas -->
+                <div class="d-flex flex-row flex-lg-column gap-1 justify-content-end" style="min-width:142px;">
+                    <a href="{% url 'detalle_planta' instalacion.pk p.pk %}" class="btn btn-primary-ap btn-sm">
+                        <i class="bi bi-activity"></i>Telemetría
+                    </a>
+                    {% if perms.telemetria.change_planta or perms.telemetria.delete_planta %}
+                    <div class="d-flex gap-1">
+                        {% if perms.telemetria.change_planta %}
+                        <a href="{% url 'editar_planta' instalacion.pk p.pk %}" class="btn btn-ghost btn-sm flex-fill" title="Editar planta">
+                            <i class="bi bi-pencil me-0"></i>
+                        </a>
+                        {% endif %}
+                        {% if perms.telemetria.delete_planta %}
+                        <a href="{% url 'eliminar_planta' instalacion.pk p.pk %}" class="btn btn-ghost-danger btn-sm flex-fill" title="Eliminar planta">
+                            <i class="bi bi-trash3 me-0"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endwith %}
+            {% empty %}
+            <div class="text-center py-5">
                 <p class="t-muted mb-3">Aún no hay plantas registradas en esta instalación.</p>
                 {% if perms.telemetria.add_planta %}
                 <a href="{% url 'crear_planta' instalacion.pk %}" class="btn btn-primary-ap btn-sm">
@@ -137,7 +202,48 @@
                 </a>
                 {% endif %}
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const filas = Array.from(document.querySelectorAll('.planta-row'));
+        const pills = document.querySelectorAll('#plantas-filtros .cockpit-pill');
+        const input = document.getElementById('plantas-buscar');
+        const badge = document.getElementById('plantas-visibles');
+        let filtro = 'todas';
+
+        function aplicar() {
+            const q = (input ? input.value : '').trim().toLowerCase();
+            let visibles = 0;
+            filas.forEach(row => {
+                const matchTxt = !q || (row.dataset.texto || '').includes(q);
+                let matchCat = true;
+                if (filtro === 'riesgo') {
+                    matchCat = row.dataset.estado === 'critico' || row.dataset.estado === 'atencion';
+                } else if (filtro === 'precosecha') {
+                    matchCat = row.dataset.precosecha === '1';
+                } else if (filtro === 'testigo') {
+                    matchCat = row.dataset.testigo === '1';
+                }
+                const ver = matchTxt && matchCat;
+                row.style.display = ver ? '' : 'none';
+                if (ver) visibles += 1;
+            });
+            if (badge) badge.textContent = `${visibles} visible(s)`;
+        }
+
+        pills.forEach(p => {
+            p.addEventListener('click', () => {
+                filtro = p.dataset.filtro;
+                pills.forEach(btn => btn.classList.toggle('active', btn === p));
+                aplicar();
+            });
+        });
+        if (input) input.addEventListener('input', aplicar);
+    })();
+</script>
 {% endblock %}

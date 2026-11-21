@@ -386,7 +386,7 @@ def editar_instalacion(request, instalacion_id):
         'descripcion': 'Actualiza los datos del sistema y selecciona qué sensores ambientales deseas vigilar.',
         'volver_url': reverse('detalle_instalacion', kwargs={'instalacion_id': instalacion.pk}),
     }
-    return render(request, 'dashboard/formulario.html', contexto)
+    return render(request, 'dashboard/instalacion_config.html', contexto)
 
 
 @login_required(login_url='login')
@@ -417,9 +417,18 @@ def lista_plantas(request, instalacion_id):
 
     prioridad_estado = {'critico': 0, 'atencion': 1, 'optimo': 2, 'sin_datos': 3}
     fichas = []
+    num_riesgo = 0
+    num_optimas = 0
+    num_precosecha = 0
     for planta in plantas:
         sensores_propios = planta.sensores.filter(activo=True)
         resumen = resumen_planta(planta)
+        if resumen['estado'] in ('critico', 'atencion'):
+            num_riesgo += 1
+        elif resumen['estado'] == 'optimo':
+            num_optimas += 1
+        if planta.lista_para_cosechar or resumen.get('pre_cosecha'):
+            num_precosecha += 1
         fichas.append({
             'planta': planta,
             'resumen': resumen,
@@ -436,6 +445,9 @@ def lista_plantas(request, instalacion_id):
     contexto = {
         'instalacion': instalacion,
         'fichas': fichas,
+        'num_riesgo': num_riesgo,
+        'num_optimas': num_optimas,
+        'num_precosecha': num_precosecha,
         'tab_activa': 'plantas',
         'usuario': request.user,
     }

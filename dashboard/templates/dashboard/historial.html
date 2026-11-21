@@ -2,98 +2,71 @@
 
 {% block title %}Historial — {{ instalacion.nombre }}{% endblock %}
 
+{% block main_class %}cockpit-main{% endblock %}
+
+{% block extra_head %}
+<style>
+    .hist-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.42fr);
+        gap: 0.85rem;
+        align-items: stretch;
+    }
+    .hist-sensor-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.65rem;
+        padding: 0.62rem 0.85rem;
+        border-bottom: 1px solid var(--ap-border);
+        color: var(--ap-text);
+        transition: background-color .15s;
+    }
+    .hist-sensor-card:last-child { border-bottom: 0; }
+    .hist-sensor-card:hover { background: var(--ap-surface-2); }
+    .hist-sensor-card.active {
+        background: rgba(52, 163, 124, 0.08);
+        box-shadow: inset 3px 0 0 var(--ap-accent);
+    }
+    @media (max-width: 1199.98px) {
+        .hist-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
     {% include "dashboard/_instalacion_nav.html" %}
 
-    <!-- Resumen -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="panel stat">
-                <div class="stat-label">Sensores activos</div>
-                <div class="stat-value">{{ estados_actuales|length }}</div>
+    <!-- Barra Cockpit de resumen e historial -->
+    <div class="cockpit-bar">
+        <div class="cockpit-kpis">
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Sensores</span>
+                <strong class="num">{{ estados_actuales|length }}</strong>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Sin leer</span>
+                <span class="status {% if alertas_sin_leer > 0 %}status-err{% else %}status-ok{% endif %} num">{{ alertas_sin_leer }}</span>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Alertas totales</span>
+                <strong class="num">{{ total_alertas }}</strong>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Sistema</span>
+                {% if instalacion.activa %}
+                    <span class="status status-ok">Operativo</span>
+                {% else %}
+                    <span class="status status-err">Inactivo</span>
+                {% endif %}
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="panel stat">
-                <div class="stat-label">Alertas sin leer</div>
-                <div class="stat-value {% if alertas_sin_leer > 0 %}t-danger{% endif %}">{{ alertas_sin_leer }}</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="panel stat">
-                <div class="stat-label">Total de alertas</div>
-                <div class="stat-value">{{ total_alertas }}</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="panel stat">
-                <div class="stat-label">Estado del sistema</div>
-                <div class="mt-2">
-                    {% if instalacion.activa %}
-                        <span class="status status-ok">Operativo</span>
-                    {% else %}
-                        <span class="status status-err">Inactivo</span>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Estado actual por sensor -->
-    <div class="panel mb-4">
-        <div class="panel-head">
-            <div>
-                <h2 class="panel-title">Estado actual de sensores</h2>
-                <p class="panel-sub">Última lectura registrada por cada sensor.</p>
-            </div>
-        </div>
-        <div class="panel-body">
-            <div class="row g-3">
-                {% for item in estados_actuales %}
-                {% with sensor=item.sensor med=item.ultima_medicion %}
-                <div class="col-6 col-md-4 col-xl-3">
-                    <div class="panel stat" style="background:var(--ap-surface-2);">
-                        <div class="metric-label">
-                            {% if sensor.planta %}[{{ sensor.planta.codigo }}] {% endif %}{{ sensor.get_tipo_display }}
-                        </div>
-                        {% if med %}
-                            <div class="d-flex align-items-baseline gap-2 mt-2">
-                                <div class="metric-value">{{ med.valor }}</div>
-                                <span class="metric-unit">{{ sensor.get_unidad }}</span>
-                            </div>
-                            <div class="mt-2">
-                                {% if med.estado_conexion %}
-                                    <span class="status status-ok">Conectado</span>
-                                {% else %}
-                                    <span class="status status-err">Fallo</span>
-                                {% endif %}
-                            </div>
-                            <div class="t-muted num mt-2" style="font-size:0.74rem;">
-                                {{ med.timestamp|date:"d/m H:i:s" }}
-                            </div>
-                        {% else %}
-                            <div class="t-muted mt-2">Sin datos</div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endwith %}
-                {% empty %}
-                <div class="col-12 text-center t-muted py-3">No hay sensores registrados en esta instalación.</div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Histórico -->
-    <div class="panel">
-        <div class="panel-head">
-            <div>
-                <h2 class="panel-title">Histórico de mediciones</h2>
-                <p class="panel-sub">Últimas 100 lecturas registradas.</p>
-            </div>
-            <!-- Filtro por tipo de sensor -->
+        <div class="cockpit-controls">
             <form method="get" class="d-flex gap-2 align-items-center">
-                <label class="t-muted mb-0" style="font-size:0.8rem;">Filtrar por sensor</label>
                 <select name="sensor" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
                     <option value="">Todos los sensores</option>
                     {% for tipo in tipos_sensor %}
@@ -101,52 +74,118 @@
                     {% endfor %}
                 </select>
                 {% if filtro_tipo %}
-                <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm"><i class="bi bi-x-lg"></i>Limpiar</a>
+                <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm" title="Limpiar filtro">
+                    <i class="bi bi-x-lg me-0"></i>
+                </a>
                 {% endif %}
             </form>
+            <span class="tag num">{{ historico|length }} / 100 lecturas</span>
         </div>
-        <div class="table-responsive">
-            <table class="tbl num">
-                <thead>
-                    <tr>
-                        <th>Fecha y hora</th>
-                        <th>Sensor</th>
-                        <th>Valor</th>
-                        <th>Unidad</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for m in historico %}
-                    <tr>
-                        <td class="t-muted">{{ m.timestamp|date:"d/m/Y H:i:s" }}</td>
-                        <td>
-                            <span class="tag">
-                                {% if m.sensor.planta %}{{ m.sensor.planta.codigo }} &middot; {% endif %}{{ m.sensor.get_tipo_display }}
-                            </span>
-                        </td>
-                        <td><strong>{{ m.valor }}</strong></td>
-                        <td class="t-muted">{{ m.sensor.get_unidad }}</td>
-                        <td>
-                            {% if m.estado_conexion %}
-                                <span class="status status-ok">Conectado</span>
+    </div>
+
+    <!-- Dos columnas contenidas sin scroll de página -->
+    <div class="hist-grid">
+        <!-- Izquierda: último estado por sensor (clic filtra histórico) -->
+        <div class="panel d-flex flex-column">
+            <div class="panel-head py-2 px-3">
+                <div>
+                    <h2 class="panel-title">Último estado por sensor</h2>
+                    <p class="panel-sub">Haz clic en un sensor para filtrar la tabla.</p>
+                </div>
+            </div>
+            <div class="cockpit-scroll">
+                {% for item in estados_actuales %}
+                {% with sensor=item.sensor med=item.ultima_medicion %}
+                <a
+                    href="{% url 'historial_instalacion' instalacion.pk %}?sensor={{ sensor.tipo }}"
+                    class="hist-sensor-card {% if filtro_tipo == sensor.tipo %}active{% endif %}"
+                >
+                    <div>
+                        <div class="fw-semibold" style="font-size:0.82rem;">
+                            {% if sensor.planta %}<span class="tag me-1" style="font-size:0.65rem;">{{ sensor.planta.codigo }}</span>{% endif %}
+                            {{ sensor.get_tipo_display }}
+                        </div>
+                        <div class="t-muted num" style="font-size:0.72rem;">
+                            {% if med %}
+                                Última com.: {{ med.timestamp|date:"d/m H:i:s" }}
                             {% else %}
-                                <span class="status status-err">Fallo</span>
+                                Sin lecturas registradas
                             {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="empty">
-                            No hay mediciones registradas{% if filtro_tipo %} para el sensor <strong>{{ filtro_tipo }}</strong>{% endif %}.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        {% if med %}
+                            <div class="fw-semibold num" style="font-size:1.05rem;">
+                                {{ med.valor }} <span class="metric-unit">{{ sensor.get_unidad }}</span>
+                            </div>
+                            {% if med.estado_conexion %}
+                                <span class="status status-ok" style="font-size:0.64rem;">Conectado</span>
+                            {% else %}
+                                <span class="status status-err" style="font-size:0.64rem;">Fallo</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="status status-off" style="font-size:0.64rem;">Sin datos</span>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endwith %}
+                {% empty %}
+                <div class="text-center t-muted py-5" style="font-size:0.82rem;">No hay sensores registrados en esta instalación.</div>
+                {% endfor %}
+            </div>
         </div>
-        {% if historico %}
-        <div class="panel-foot">Mostrando {{ historico|length }} de las últimas 100 mediciones</div>
-        {% endif %}
+
+        <!-- Derecha: histórico paginado/acotado con cabecera fija -->
+        <div class="panel d-flex flex-column">
+            <div class="panel-head py-2 px-3">
+                <div>
+                    <h2 class="panel-title">Histórico de mediciones</h2>
+                    <p class="panel-sub">Últimas 100 lecturas registradas en base de datos.</p>
+                </div>
+                {% if filtro_tipo %}
+                <span class="tag">{{ filtro_tipo|capfirst }}</span>
+                {% endif %}
+            </div>
+            <div class="table-responsive cockpit-scroll">
+                <table class="tbl tbl-compact num">
+                    <thead>
+                        <tr>
+                            <th>Fecha y hora</th>
+                            <th>Sensor</th>
+                            <th>Valor</th>
+                            <th>Unidad</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in historico %}
+                        <tr>
+                            <td class="t-muted">{{ m.timestamp|date:"d/m/Y H:i:s" }}</td>
+                            <td>
+                                <span class="tag" style="font-size:0.68rem;">
+                                    {% if m.sensor.planta %}{{ m.sensor.planta.codigo }} &middot; {% endif %}{{ m.sensor.get_tipo_display }}
+                                </span>
+                            </td>
+                            <td><strong>{{ m.valor }}</strong></td>
+                            <td class="t-muted">{{ m.sensor.get_unidad }}</td>
+                            <td>
+                                {% if m.estado_conexion %}
+                                    <span class="status status-ok" style="font-size:0.66rem;">Conectado</span>
+                                {% else %}
+                                    <span class="status status-err" style="font-size:0.66rem;">Fallo</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="empty">
+                                No hay mediciones registradas{% if filtro_tipo %} para el sensor <strong>{{ filtro_tipo }}</strong>{% endif %}.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 {% endblock %}

@@ -1,0 +1,143 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Configuración — {{ instalacion.nombre }}{% endblock %}
+
+{% block main_class %}cockpit-main{% endblock %}
+
+{% block extra_head %}
+<style>
+    .cfg-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.35fr);
+        gap: 0.85rem;
+        align-items: stretch;
+    }
+    @media (max-width: 1199.98px) {
+        .cfg-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    {% include "dashboard/_instalacion_nav.html" %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <!-- Barra Cockpit de acciones rápidas -->
+        <div class="cockpit-bar">
+            <div class="cockpit-kpis">
+                <div class="cockpit-kpi">
+                    <span class="cockpit-kpi-lbl">Configuración de torre</span>
+                    <strong>{{ instalacion.nombre }}</strong>
+                </div>
+                <span class="cockpit-sep"></span>
+                <div class="cockpit-kpi">
+                    <span class="cockpit-kpi-lbl">Estado</span>
+                    {% if instalacion.activa %}
+                        <span class="status status-ok">Operativa</span>
+                    {% else %}
+                        <span class="status status-err">Inactiva</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="cockpit-controls">
+                {% if perms.telemetria.delete_instalacion %}
+                <a href="{% url 'eliminar_instalacion' instalacion.pk %}" class="btn btn-ghost-danger btn-sm">
+                    <i class="bi bi-trash3"></i>Eliminar torre
+                </a>
+                {% endif %}
+                <a href="{{ volver_url }}" class="btn btn-ghost btn-sm">Cancelar</a>
+                <button type="submit" class="btn btn-primary-ap btn-sm px-3">
+                    <i class="bi bi-check2"></i>Guardar cambios
+                </button>
+            </div>
+        </div>
+
+        {% if form.non_field_errors %}
+            {% for error in form.non_field_errors %}
+                <div class="ap-alert ap-alert-error mb-3">{{ error }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Paneles de configuración en 2 columnas sin scroll -->
+        <div class="cfg-grid">
+            <!-- Columna izquierda: datos generales de la torre -->
+            <div class="panel">
+                <div class="panel-head py-2 px-3">
+                    <div>
+                        <h2 class="panel-title">Datos generales y agrupación</h2>
+                        <p class="panel-sub">Ubicación física, invernadero padre y estado operativo.</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.invernadero.id_for_label }}">{{ form.invernadero.label }}</label>
+                        {{ form.invernadero }}
+                        {% for error in form.invernadero.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.nombre.id_for_label }}">{{ form.nombre.label }}</label>
+                        {{ form.nombre }}
+                        {% for error in form.nombre.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.ubicacion.id_for_label }}">{{ form.ubicacion.label }}</label>
+                        {{ form.ubicacion }}
+                        {% for error in form.ubicacion.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                    </div>
+
+                    <div class="check-tile justify-content-between" style="height:auto;">
+                        <div class="form-check form-switch m-0 d-flex align-items-center w-100">
+                            {{ form.activa }}
+                            <label class="form-check-label ms-2" style="font-weight:500;cursor:pointer;" for="{{ form.activa.id_for_label }}">
+                                {{ form.activa.label }}
+                            </label>
+                        </div>
+                    </div>
+                    {% for error in form.activa.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+
+            <!-- Columna derecha: matriz de sensores ambientales -->
+            <div class="panel d-flex flex-column">
+                <div class="panel-head py-2 px-3">
+                    <div>
+                        <h2 class="panel-title">Sensores ambientales monitoreados</h2>
+                        <p class="panel-sub">Activa o desactiva las sondas compartidas de esta torre sin perder su historial.</p>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="cockpit-pill" onclick="document.querySelectorAll('input[name=sensores_seleccionados]').forEach(el => el.checked = true);">Marcar todos</button>
+                        <button type="button" class="cockpit-pill" onclick="document.querySelectorAll('input[name=sensores_seleccionados]').forEach(el => el.checked = false);">Desmarcar</button>
+                    </div>
+                </div>
+                <div class="panel-body flex-grow-1">
+                    <div class="row g-2">
+                        {% for choice in form.sensores_seleccionados %}
+                        <div class="col-12 col-sm-6">
+                            <div class="check-tile">
+                                <div class="form-check m-0 d-flex align-items-center w-100">
+                                    {{ choice.tag }}
+                                    <label class="form-check-label ms-2 flex-grow-1" style="font-size:0.83rem;cursor:pointer;" for="{{ choice.id_for_label }}">
+                                        {{ choice.choice_label }}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% for error in form.sensores_seleccionados.errors %}
+                        <div class="field-error mt-2">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                <div class="panel-foot d-flex justify-content-between align-items-center">
+                    <span>Los cambios en sensores sincronizan automáticamente con el simulador IoT.</span>
+                    <button type="submit" class="btn btn-primary-ap btn-sm">Guardar cambios</button>
+                </div>
+            </div>
+        </div>
+    </form>
+{% endblock %}

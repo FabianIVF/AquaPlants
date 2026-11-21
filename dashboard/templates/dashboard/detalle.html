@@ -2,57 +2,10 @@
 
 {% block title %}Panel de control — {{ instalacion.nombre }}{% endblock %}
 
+{% block main_class %}cockpit-main{% endblock %}
+
 {% block extra_head %}
 <style>
-    /* Compactar marco superior solo en el Cockpit para auditar sin scroll */
-    .app-main { padding-top: 0.9rem; padding-bottom: 1.25rem; }
-    .inst-header { margin-bottom: 0.65rem; }
-    .inst-tabs { margin-bottom: 0.85rem; padding-bottom: 0.45rem; }
-
-    /* ---------- Barra superior de auditoría ---------- */
-    .cockpit-bar {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.65rem 1rem;
-        padding: 0.55rem 0.9rem;
-        margin-bottom: 0.85rem;
-        background: var(--ap-surface);
-        border: 1px solid var(--ap-border);
-        border-radius: var(--ap-radius);
-    }
-    .cockpit-kpis {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.85rem 1.25rem;
-    }
-    .cockpit-kpi {
-        display: flex;
-        align-items: center;
-        gap: 0.45rem;
-        font-size: 0.82rem;
-    }
-    .cockpit-kpi-lbl {
-        font-size: 0.68rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--ap-muted);
-    }
-    .cockpit-sep {
-        width: 1px;
-        height: 18px;
-        background: var(--ap-border-strong);
-    }
-    .cockpit-controls {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.5rem;
-        margin-left: auto;
-    }
     .cockpit-hint {
         max-width: 340px;
         white-space: nowrap;
