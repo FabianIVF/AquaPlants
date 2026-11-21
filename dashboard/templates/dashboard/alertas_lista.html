@@ -5,7 +5,7 @@
 {% block main_class %}cockpit-main{% endblock %}
 
 {% block content %}
-    <!-- Barra Cockpit: KPIs + filtros compactos + acción masiva -->
+    <!-- Barra Cockpit: KPIs + selector entre torres + filtros de auditoría -->
     <div class="cockpit-bar">
         <div class="cockpit-kpis">
             <div class="cockpit-kpi">
@@ -30,8 +30,30 @@
         </div>
 
         <div class="cockpit-controls">
+            {% if not instalacion and not filtro_inst %}
+            <div class="d-flex gap-1">
+                <a
+                    href="{% url 'lista_alertas' %}?vista=agrupada{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_severidad %}&severidad={{ filtro_severidad }}{% endif %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}"
+                    class="cockpit-pill {% if vista_alertas != 'lista' %}active{% endif %}"
+                    title="Agrupar alertas por cada torre"
+                >
+                    <i class="bi bi-layers me-1"></i>Por torre
+                </a>
+                <a
+                    href="{% url 'lista_alertas' %}?vista=lista{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_severidad %}&severidad={{ filtro_severidad }}{% endif %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}"
+                    class="cockpit-pill {% if vista_alertas == 'lista' %}active{% endif %}"
+                    title="Ver todas en orden cronológico"
+                >
+                    <i class="bi bi-list-ul me-1"></i>Cronológica
+                </a>
+            </div>
+            {% endif %}
+
             <form method="get" class="d-flex flex-wrap align-items-center gap-1">
-                <input type="text" name="q" value="{{ busqueda }}" class="form-control form-control-sm" style="width:155px;" placeholder="Sensor, planta, texto...">
+                {% if not instalacion and vista_alertas == 'lista' %}
+                <input type="hidden" name="vista" value="lista">
+                {% endif %}
+                <input type="text" name="q" value="{{ busqueda }}" class="form-control form-control-sm" style="width:150px;" placeholder="Sensor, planta, texto...">
                 <select name="estado" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
                     <option value="">Estado: Todas</option>
                     <option value="pendientes" {% if filtro_estado == 'pendientes' %}selected{% endif %}>Sin leer</option>
@@ -45,8 +67,10 @@
                 {% if not instalacion %}
                 <select name="instalacion" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
                     <option value="">Todas las torres</option>
-                    {% for inst in instalaciones_disponibles %}
-                    <option value="{{ inst.pk }}" {% if filtro_inst == inst.pk|stringformat:"s" %}selected{% endif %}>{{ inst.nombre }}</option>
+                    {% for tr in torres_resumen %}
+                    <option value="{{ tr.instalacion.pk }}" {% if filtro_inst == tr.instalacion.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ tr.instalacion.nombre }}{% if tr.pendientes > 0 %} ({{ tr.pendientes }}){% endif %}
+                    </option>
                     {% endfor %}
                 </select>
                 {% endif %}
@@ -65,23 +89,120 @@
                 {% csrf_token %}
                 {% if instalacion %}
                 <input type="hidden" name="instalacion_id" value="{{ instalacion.pk }}">
+                {% elif instalacion_filtrada %}
+                <input type="hidden" name="instalacion_id" value="{{ instalacion_filtrada.pk }}">
                 {% endif %}
                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                 <button type="submit" class="btn btn-ghost btn-sm">
-                    <i class="bi bi-check2-all"></i>Marcar leídas ({{ total_pendientes }})
+                    <i class="bi bi-check2-all"></i>Marcar leídas
                 </button>
             </form>
             {% endif %}
         </div>
     </div>
 
-    <!-- Tabla auditada con altura acotada y cabecera fija -->
+    {% if not instalacion and not filtro_inst and vista_alertas != 'lista' %}
+    <!-- MODO AUDITORÍA POR TORRE: tarjetas separadas por cada torre -->
+    <div class="cockpit-scroll" style="padding-right:0.15rem;">
+        {% for g in grupos_alertas %}
+        {% with inst=g.instalacion %}
+        <section class="panel mb-3" style="border-left:3px solid {% if g.rojas > 0 and g.pendientes > 0 %}var(--ap-danger){% elif g.pendientes > 0 %}var(--ap-info){% else %}var(--ap-accent){% endif %};">
+            <div class="panel-head py-2 px-3">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <h2 class="panel-title" style="font-size:0.95rem;">
+                        <i class="bi bi-hdd-stack me-1 t-accent"></i>{{ inst.nombre }}
+                    </h2>
+                    {% if inst.invernadero %}
+                    <span class="tag" style="font-size:0.68rem;">{{ inst.invernadero.nombre }}</span>
+                    {% endif %}
+                    <span class="status {% if g.pendientes > 0 %}status-err{% else %}status-ok{% endif %} num" style="font-size:0.66rem;">
+                        {{ g.pendientes }} sin leer
+                    </span>
+                    {% if g.rojas > 0 %}
+                    <span class="tag num t-danger" style="font-size:0.68rem;">{{ g.rojas }} roja(s)</span>
+                    {% endif %}
+                    {% if g.azules > 0 %}
+                    <span class="tag num limit-lo" style="font-size:0.68rem;">{{ g.azules }} azul(es)</span>
+                    {% endif %}
+                    <span class="t-muted num" style="font-size:0.74rem;">{{ g.alertas|length }} alerta(s)</span>
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center gap-1">
+                    <a
+                        href="{% url 'lista_alertas' %}?instalacion={{ inst.pk }}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_severidad %}&severidad={{ filtro_severidad }}{% endif %}"
+                        class="btn btn-ghost btn-sm"
+                        title="Enfocar auditoría solo en {{ inst.nombre }}"
+                    >
+                        <i class="bi bi-funnel"></i>Solo esta torre
+                    </a>
+                    <a href="{% url 'detalle_instalacion' inst.pk %}" class="btn btn-ghost btn-sm" title="Abrir Panel en vivo">
+                        <i class="bi bi-activity"></i>Panel
+                    </a>
+                    {% if puede_gestionar and g.pendientes > 0 %}
+                    <form method="post" action="{% url 'marcar_todas_alertas_leidas' %}" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="instalacion_id" value="{{ inst.pk }}">
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="btn btn-primary-ap btn-sm" title="Marcar todas las alertas de {{ inst.nombre }} como leídas">
+                            <i class="bi bi-check2-all"></i>Marcar leídas ({{ g.pendientes }})
+                        </button>
+                    </form>
+                    {% endif %}
+                    <button class="btn btn-ghost btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#al-torre-{{ inst.pk }}" aria-expanded="true" title="Contraer / expandir">
+                        <i class="bi bi-chevron-expand me-0"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="collapse show" id="al-torre-{{ inst.pk }}">
+                <div class="table-responsive">
+                    <table class="tbl tbl-compact">
+                        <thead>
+                            <tr>
+                                <th>Fecha y hora</th>
+                                <th>Sensor / Planta</th>
+                                <th>Detalle de alerta</th>
+                                <th>Estado</th>
+                                <th class="text-end">Gestión</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in g.alertas %}
+                                {% include "dashboard/_alerta_fila.html" with a=a mostrar_torre=False %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        {% endwith %}
+        {% empty %}
+        <div class="panel">
+            <div class="panel-body text-center py-5 t-muted">
+                No se encontraron alertas con los filtros aplicados.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- MODO TABLA ÚNICA (torre individual o vista cronológica) -->
     <div class="panel">
         <div class="panel-head py-2 px-3">
-            <div>
+            <div class="d-flex align-items-center gap-2">
                 <h1 class="panel-title">
-                    {% if instalacion %}Registro de alertas — {{ instalacion.nombre }}{% else %}Centro de alertas y notificaciones{% endif %}
+                    {% if instalacion %}
+                        Registro de alertas — {{ instalacion.nombre }}
+                    {% elif instalacion_filtrada %}
+                        Alertas de {{ instalacion_filtrada.nombre }}
+                    {% else %}
+                        Centro de alertas y notificaciones (cronológica)
+                    {% endif %}
                 </h1>
+                {% if not instalacion and instalacion_filtrada %}
+                <a href="{% url 'lista_alertas' %}{% if filtro_estado or filtro_severidad %}?{% endif %}{% if filtro_estado %}estado={{ filtro_estado }}{% endif %}{% if filtro_estado and filtro_severidad %}&{% endif %}{% if filtro_severidad %}severidad={{ filtro_severidad }}{% endif %}" class="btn btn-ghost btn-sm">
+                    <i class="bi bi-layers"></i>Ver todas las torres
+                </a>
+                {% endif %}
             </div>
             <span class="tag num">{{ alertas|length }} resultado(s)</span>
         </div>
@@ -98,69 +219,7 @@
                 </thead>
                 <tbody>
                     {% for a in alertas %}
-                    {% with sensor=a.regla.sensor %}
-                    <tr {% if not a.leida %}style="background:rgba(255,255,255,.02);"{% endif %}>
-                        <td class="num t-muted" style="white-space:nowrap;">
-                            {{ a.fecha_generacion|date:"d/m/Y H:i:s" }}
-                        </td>
-                        <td>
-                            <div class="fw-semibold" style="font-size:0.8rem;">{{ sensor.instalacion.nombre }}</div>
-                            <div class="t-muted" style="font-size:0.72rem;">
-                                {% if sensor.planta %}{{ sensor.planta.codigo }} &middot; {% endif %}{{ sensor.get_tipo_display }}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                {% if "ROJA" in a.mensaje or "ALTA" in a.mensaje %}
-                                    <span class="sev sev-high flex-shrink-0"></span>
-                                {% else %}
-                                    <span class="sev sev-low flex-shrink-0"></span>
-                                {% endif %}
-                                <span {% if not a.leida %}class="fw-semibold"{% endif %}>{{ a.mensaje }}</span>
-                            </div>
-                        </td>
-                        <td>
-                            {% if a.leida %}
-                                <span class="status status-off">Leída</span>
-                            {% else %}
-                                <span class="status status-err">Sin leer</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-end" style="white-space:nowrap;">
-                            {% if sensor.planta %}
-                                <a href="{% url 'detalle_planta' sensor.instalacion.pk sensor.planta.pk %}" class="btn btn-ghost btn-sm me-1" title="Ir a la planta">
-                                    <i class="bi bi-flower1"></i>Ver
-                                </a>
-                            {% else %}
-                                <a href="{% url 'detalle_instalacion' sensor.instalacion.pk %}" class="btn btn-ghost btn-sm me-1" title="Ir al panel">
-                                    <i class="bi bi-activity"></i>Ver
-                                </a>
-                            {% endif %}
-                            {% if puede_gestionar %}
-                            <form method="post" action="{% url 'toggle_alerta_leida' a.pk %}" class="d-inline">
-                                {% csrf_token %}
-                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                <button type="submit" class="btn btn-ghost btn-sm me-1">
-                                    {% if a.leida %}
-                                        <i class="bi bi-arrow-counterclockwise"></i>Reabrir
-                                    {% else %}
-                                        <i class="bi bi-check2"></i>Marcar leída
-                                    {% endif %}
-                                </button>
-                            </form>
-                            {% endif %}
-                            {% if puede_eliminar %}
-                            <form method="post" action="{% url 'eliminar_alerta' a.pk %}" class="d-inline">
-                                {% csrf_token %}
-                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                <button type="submit" class="btn btn-ghost-danger btn-sm" title="Eliminar alerta">
-                                    <i class="bi bi-trash3 me-0"></i>
-                                </button>
-                            </form>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endwith %}
+                        {% include "dashboard/_alerta_fila.html" with a=a mostrar_torre=True %}
                     {% empty %}
                     <tr>
                         <td colspan="5" class="empty">No se encontraron alertas con los filtros aplicados.</td>
@@ -170,4 +229,5 @@
             </table>
         </div>
     </div>
+    {% endif %}
 {% endblock %}

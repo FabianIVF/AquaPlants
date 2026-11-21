@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -817,7 +817,12 @@ def lista_alertas(request, instalacion_id=None):
     else:
         base_qs = AlertaGenerada.objects.filter(regla__sensor__instalacion__in=instalaciones_disponibles)
 
-    base_qs = base_qs.select_related('regla__sensor__instalacion', 'regla__sensor__planta', 'medicion')
+    base_qs = base_qs.select_related(
+        'regla__sensor__instalacion',
+        'regla__sensor__instalacion__invernadero',
+        'regla__sensor__planta',
+        'medicion',
+    )
 
     total_pendientes = base_qs.filter(leida=False).count()
     total_rojas = base_qs.filter(mensaje__icontains='ROJA').count()
@@ -827,7 +832,34 @@ def lista_alertas(request, instalacion_id=None):
     filtro_estado = request.GET.get('estado', '')
     filtro_severidad = request.GET.get('severidad', '')
     filtro_inst = request.GET.get('instalacion', '')
+    vista_alertas = request.GET.get('vista', 'agrupada')
     busqueda = request.GET.get('q', '').strip()
+
+    conteos_map = {}
+    if not instalacion:
+        for row in (
+            base_qs.order_by()
+            .values('regla__sensor__instalacion_id')
+            .annotate(
+                total=Count('id'),
+                pendientes=Count('id', filter=Q(leida=False)),
+                rojas=Count('id', filter=Q(mensaje__icontains='ROJA')),
+                azules=Count('id', filter=Q(mensaje__icontains='AZUL')),
+            )
+        ):
+            conteos_map[row['regla__sensor__instalacion_id']] = row
+
+    torres_resumen = []
+    for inst in instalaciones_disponibles:
+        c = conteos_map.get(inst.pk, {})
+        torres_resumen.append({
+            'instalacion': inst,
+            'total': c.get('total', 0),
+            'pendientes': c.get('pendientes', 0),
+            'rojas': c.get('rojas', 0),
+            'azules': c.get('azules', 0),
+        })
+    torres_resumen.sort(key=lambda t: (-t['pendientes'], -t['total'], t['instalacion'].nombre.lower()))
 
     alertas_qs = base_qs
     if filtro_estado == 'pendientes':
@@ -853,9 +885,41 @@ def lista_alertas(request, instalacion_id=None):
 
     alertas = list(alertas_qs.order_by('leida', '-fecha_generacion')[:100])
 
+    grupos_map = {}
+    for a in alertas:
+        inst = a.regla.sensor.instalacion
+        grupo = grupos_map.setdefault(inst.pk, {
+            'instalacion': inst,
+            'pendientes': 0,
+            'rojas': 0,
+            'azules': 0,
+            'alertas': [],
+        })
+        grupo['alertas'].append(a)
+        if not a.leida:
+            grupo['pendientes'] += 1
+        msg_up = a.mensaje.upper()
+        if 'ROJA' in msg_up:
+            grupo['rojas'] += 1
+        elif 'AZUL' in msg_up:
+            grupo['azules'] += 1
+
+    grupos_alertas = sorted(
+        grupos_map.values(),
+        key=lambda g: (-g['pendientes'], -g['rojas'], g['instalacion'].nombre.lower()),
+    )
+
+    instalacion_filtrada = next(
+        (i for i in instalaciones_disponibles if str(i.pk) == filtro_inst),
+        None,
+    )
+
     contexto = {
         'instalacion': instalacion,
+        'instalacion_filtrada': instalacion_filtrada,
         'instalaciones_disponibles': instalaciones_disponibles,
+        'torres_resumen': torres_resumen,
+        'grupos_alertas': grupos_alertas,
         'alertas': alertas,
         'total_pendientes': total_pendientes,
         'total_rojas': total_rojas,
@@ -864,6 +928,7 @@ def lista_alertas(request, instalacion_id=None):
         'filtro_estado': filtro_estado,
         'filtro_severidad': filtro_severidad,
         'filtro_inst': filtro_inst,
+        'vista_alertas': vista_alertas,
         'busqueda': busqueda,
         'tab_activa': 'alertas',
         'puede_gestionar': _es_admin(request.user) or request.user.has_perm('telemetria.change_alertagenerada'),

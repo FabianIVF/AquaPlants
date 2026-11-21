@@ -1,0 +1,70 @@
+{% with sensor=a.regla.sensor %}
+<tr {% if not a.leida %}style="background:rgba(16,185,129,.03);"{% endif %}>
+    <td class="num t-muted" style="white-space:nowrap;">
+        {{ a.fecha_generacion|date:"d/m/Y H:i:s" }}
+    </td>
+    <td>
+        {% if mostrar_torre %}
+        <div class="fw-semibold" style="font-size:0.8rem;">{{ sensor.instalacion.nombre }}</div>
+        <div class="t-muted" style="font-size:0.72rem;">
+            {% if sensor.planta %}{{ sensor.planta.codigo }} &middot; {% endif %}{{ sensor.get_tipo_display }}
+        </div>
+        {% else %}
+        <div class="fw-semibold" style="font-size:0.78rem;">
+            {% if sensor.planta %}<span class="tag me-1" style="font-size:0.65rem;">{{ sensor.planta.codigo }}</span>{% endif %}
+            {{ sensor.get_tipo_display }}
+        </div>
+        {% endif %}
+    </td>
+    <td>
+        <div class="d-flex align-items-center">
+            {% if "ROJA" in a.mensaje or "ALTA" in a.mensaje %}
+                <span class="sev sev-high flex-shrink-0"></span>
+            {% else %}
+                <span class="sev sev-low flex-shrink-0"></span>
+            {% endif %}
+            <span {% if not a.leida %}class="fw-semibold"{% endif %}>{{ a.mensaje }}</span>
+        </div>
+    </td>
+    <td>
+        {% if a.leida %}
+            <span class="status status-off">Leída</span>
+        {% else %}
+            <span class="status status-err">Sin leer</span>
+        {% endif %}
+    </td>
+    <td class="text-end" style="white-space:nowrap;">
+        {% if sensor.planta %}
+            <a href="{% url 'detalle_planta' sensor.instalacion.pk sensor.planta.pk %}" class="btn btn-ghost btn-sm me-1" title="Ir a la planta">
+                <i class="bi bi-flower1"></i>Ver
+            </a>
+        {% else %}
+            <a href="{% url 'detalle_instalacion' sensor.instalacion.pk %}" class="btn btn-ghost btn-sm me-1" title="Ir al panel">
+                <i class="bi bi-activity"></i>Ver
+            </a>
+        {% endif %}
+        {% if puede_gestionar %}
+        <form method="post" action="{% url 'toggle_alerta_leida' a.pk %}" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="btn btn-ghost btn-sm me-1">
+                {% if a.leida %}
+                    <i class="bi bi-arrow-counterclockwise"></i>Reabrir
+                {% else %}
+                    <i class="bi bi-check2"></i>Marcar leída
+                {% endif %}
+            </button>
+        </form>
+        {% endif %}
+        {% if puede_eliminar %}
+        <form method="post" action="{% url 'eliminar_alerta' a.pk %}" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="btn btn-ghost-danger btn-sm" title="Eliminar alerta">
+                <i class="bi bi-trash3 me-0"></i>
+            </button>
+        </form>
+        {% endif %}
+    </td>
+</tr>
+{% endwith %}

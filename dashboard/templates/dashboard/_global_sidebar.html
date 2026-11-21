@@ -17,13 +17,13 @@
         {% else %}
         <div class="yt-tower-title" title="Centro de Alertas">
             <i class="bi bi-bell t-accent flex-shrink-0"></i>
-            <span class="yt-text fw-semibold">Centro de alertas</span>
+            <span class="yt-text fw-semibold">Auditoría de alertas</span>
         </div>
         <div class="yt-tower-meta yt-text">
             {% if total_pendientes > 0 %}
-                <span class="t-danger">{{ total_pendientes }} sin leer</span>
+                <span class="t-danger">{{ total_pendientes }} sin leer</span> &middot; {{ torres_resumen|length }} torre(s)
             {% else %}
-                <span class="t-accent">Todo al día</span>
+                <span class="t-accent">Todo al día</span> &middot; {{ torres_resumen|length }} torre(s)
             {% endif %}
         </div>
         {% endif %}
@@ -62,38 +62,102 @@
     <hr class="yt-divider">
 
     {% if request.resolver_match.url_name == 'lista_alertas' %}
-    <!-- Filtros rápidos de alertas en la barra lateral -->
+    <!-- Filtro rápido por cada torre (para auditoría directa) -->
     <div class="yt-section">
         <div class="yt-section-lbl yt-text">
-            <span>Filtros de alerta</span>
+            <span>Por torre</span>
+            <i class="bi bi-chevron-right" style="font-size:0.7rem;"></i>
         </div>
 
-        <a href="{% url 'lista_alertas' %}" class="yt-item {% if not filtro_estado and not filtro_severidad %}active{% endif %}" title="Todas las alertas">
+        <a
+            href="{% url 'lista_alertas' %}{% if filtro_estado or filtro_severidad or vista_alertas == 'lista' %}?{% endif %}{% if filtro_estado %}estado={{ filtro_estado }}&{% endif %}{% if filtro_severidad %}severidad={{ filtro_severidad }}&{% endif %}{% if vista_alertas == 'lista' %}vista=lista{% endif %}"
+            class="yt-item {% if not filtro_inst %}active{% endif %}"
+            title="Todas las torres"
+        >
+            <i class="bi bi-layers"></i>
+            <span class="yt-text flex-grow-1">Todas las torres</span>
+            <span class="yt-count yt-text">{{ total_pendientes }}</span>
+        </a>
+
+        {% for tr in torres_resumen %}
+        {% with inst=tr.instalacion %}
+        <a
+            href="{% url 'lista_alertas' %}?instalacion={{ inst.pk }}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_severidad %}&severidad={{ filtro_severidad }}{% endif %}"
+            class="yt-item {% if filtro_inst == inst.pk|stringformat:'s' %}active{% endif %}"
+            title="{{ inst.nombre }} ({{ tr.pendientes }} sin leer / {{ tr.total }} total)"
+        >
+            {% if tr.pendientes > 0 %}
+                <i class="bi bi-exclamation-diamond" style="color:#fb7185;"></i>
+            {% elif tr.total > 0 %}
+                <i class="bi bi-hdd-stack" style="color:var(--ap-aqua);"></i>
+            {% else %}
+                <i class="bi bi-check2-circle" style="color:#34d399;"></i>
+            {% endif %}
+            <span class="yt-text flex-grow-1 text-truncate">{{ inst.nombre }}</span>
+            {% if tr.pendientes > 0 %}
+            <span class="yt-count yt-text" style="border-color:rgba(244,63,94,.45);color:#fb7185;">{{ tr.pendientes }}</span>
+            {% elif tr.total > 0 %}
+            <span class="yt-count yt-text">{{ tr.total }}</span>
+            {% endif %}
+        </a>
+        {% endwith %}
+        {% endfor %}
+    </div>
+
+    <hr class="yt-divider">
+
+    <!-- Filtros de estado y severidad manteniendo la torre seleccionada -->
+    <div class="yt-section">
+        <div class="yt-section-lbl yt-text">
+            <span>Estado y severidad</span>
+        </div>
+
+        <a
+            href="{% url 'lista_alertas' %}{% if filtro_inst %}?instalacion={{ filtro_inst }}{% endif %}"
+            class="yt-item {% if not filtro_estado and not filtro_severidad %}active{% endif %}"
+            title="Ver todas"
+        >
             <i class="bi bi-inboxes"></i>
             <span class="yt-text">Todas</span>
         </a>
 
-        <a href="{% url 'lista_alertas' %}?estado=pendientes" class="yt-item {% if filtro_estado == 'pendientes' %}active{% endif %}" title="Alertas sin leer">
+        <a
+            href="{% url 'lista_alertas' %}?estado=pendientes{% if filtro_inst %}&instalacion={{ filtro_inst }}{% endif %}"
+            class="yt-item {% if filtro_estado == 'pendientes' and not filtro_severidad %}active{% endif %}"
+            title="Solo sin leer"
+        >
             <i class="bi bi-exclamation-circle"></i>
             <span class="yt-text flex-grow-1">Sin leer</span>
             <span class="yt-count yt-text">{{ total_pendientes }}</span>
         </a>
 
-        <a href="{% url 'lista_alertas' %}?severidad=roja" class="yt-item {% if filtro_severidad == 'roja' %}active{% endif %}" title="Alertas Rojas">
+        <a
+            href="{% url 'lista_alertas' %}?severidad=roja{% if filtro_inst %}&instalacion={{ filtro_inst }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}"
+            class="yt-item {% if filtro_severidad == 'roja' %}active{% endif %}"
+            title="Alertas Rojas (exceso)"
+        >
             <i class="bi bi-thermometer-high" style="color:#fb7185;"></i>
             <span class="yt-text flex-grow-1">Alertas Rojas</span>
             <span class="yt-count yt-text">{{ total_rojas }}</span>
         </a>
 
-        <a href="{% url 'lista_alertas' %}?severidad=azul" class="yt-item {% if filtro_severidad == 'azul' %}active{% endif %}" title="Alertas Azules">
+        <a
+            href="{% url 'lista_alertas' %}?severidad=azul{% if filtro_inst %}&instalacion={{ filtro_inst }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}"
+            class="yt-item {% if filtro_severidad == 'azul' %}active{% endif %}"
+            title="Alertas Azules (caída)"
+        >
             <i class="bi bi-droplet" style="color:#38bdf8;"></i>
             <span class="yt-text flex-grow-1">Alertas Azules</span>
             <span class="yt-count yt-text">{{ total_azules }}</span>
         </a>
 
-        <a href="{% url 'lista_alertas' %}?estado=leidas" class="yt-item {% if filtro_estado == 'leidas' %}active{% endif %}" title="Alertas leídas">
-            <i class="bi bi-check2-circle"></i>
-            <span class="yt-text">Resueltas / Leídas</span>
+        <a
+            href="{% url 'lista_alertas' %}?estado=leidas{% if filtro_inst %}&instalacion={{ filtro_inst }}{% endif %}"
+            class="yt-item {% if filtro_estado == 'leidas' and not filtro_severidad %}active{% endif %}"
+            title="Resueltas / Leídas"
+        >
+            <i class="bi bi-check2-all"></i>
+            <span class="yt-text">Resueltas</span>
         </a>
     </div>
     {% else %}

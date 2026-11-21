@@ -856,6 +856,33 @@ class AlertasCentroTestCase(TestCase):
         self.alerta_roja.refresh_from_db()
         self.assertTrue(self.alerta_roja.leida)
 
+    def test_alertas_agrupadas_por_torre_y_filtro_entre_torres(self):
+        """El centro de alertas agrupa por torre priorizando pendientes y permite filtrar entre ellas."""
+        torre_b = Instalacion.objects.create(nombre="Huerto Alertas Beta", ubicacion="Sector B")
+        torre_b.encargados.add(self.encargado)
+        sensor_b = Sensor.objects.create(
+            instalacion=torre_b, tipo='humedad', modelo_hardware='DHT22', activo=True
+        )
+        regla_b = ReglaAlerta.objects.create(sensor=sensor_b, limite_minimo=50.0, limite_maximo=80.0, activa=True)
+        med_b = Medicion.objects.create(sensor=sensor_b, valor=30.0, estado_conexion=True)
+        alerta_b = AlertaGenerada.objects.create(
+            regla=regla_b, medicion=med_b, mensaje="¡ALERTA AZUL! Humedad BAJA: 30%", leida=False
+        )
+
+        self.client.login(username='enc_al', password='Pass1234!')
+        resp = self.client.get('/dashboard/alertas/')
+        self.assertEqual(resp.status_code, 200)
+        grupos = resp.context['grupos_alertas']
+        self.assertEqual(len(grupos), 2)
+        torres_resumen = resp.context['torres_resumen']
+        self.assertEqual(len(torres_resumen), 2)
+
+        resp_b = self.client.get(f'/dashboard/alertas/?instalacion={torre_b.pk}')
+        self.assertEqual(resp_b.status_code, 200)
+        self.assertEqual([a.pk for a in resp_b.context['alertas']], [alerta_b.pk])
+        # El menú lateral mantiene todas las torres autorizadas para cambiar entre ellas
+        self.assertEqual(len(resp_b.context['torres_resumen']), 2)
+
 
 class InvernaderosMonitorTestCase(TestCase):
     """
