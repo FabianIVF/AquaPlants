@@ -1,73 +1,80 @@
 {% with instalacion=item.instalacion res=item.resumen %}
-<div class="col-md-6 col-xl-4">
-    <div class="panel site-card" style="background:var(--ap-surface-2);">
-        <div class="panel-body">
-            <div class="d-flex justify-content-between align-items-start gap-2">
-                <div>
-                    <h3 class="panel-title" style="font-size:0.98rem;">{{ instalacion.nombre }}</h3>
-                    <div class="t-muted" style="font-size:0.78rem;">{{ instalacion.ubicacion }}</div>
+<div
+    class="col-md-6 col-xl-4 monitor-card-col"
+    data-estado="{{ res.estado }}"
+    data-texto="{{ instalacion.nombre|lower }} {{ instalacion.ubicacion|lower }} {% if instalacion.invernadero %}{{ instalacion.invernadero.nombre|lower }}{% endif %}"
+>
+    <div class="panel site-card" style="background:var(--ap-surface-2);border-left:3px solid {% if res.estado == 'critico' %}var(--ap-danger){% elif res.estado == 'atencion' %}var(--ap-warning){% elif res.estado == 'optimo' %}var(--ap-accent){% else %}var(--ap-border-strong){% endif %};">
+        <div class="panel-body p-3">
+            <!-- Cabecera compacta de torre -->
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <div class="min-w-0">
+                    <div class="d-flex align-items-center gap-2">
+                        {% if instalacion.activa %}
+                        <span class="live-dot flex-shrink-0" style="margin-right:0;width:7px;height:7px;"></span>
+                        {% endif %}
+                        <h3 class="panel-title text-truncate mb-0" style="font-size:0.95rem;">{{ instalacion.nombre }}</h3>
+                    </div>
+                    <div class="t-muted text-truncate" style="font-size:0.74rem;">{{ instalacion.ubicacion }}</div>
                 </div>
-                <span class="status {{ res.estado_css }}">{{ res.estado_label }}</span>
+                <span class="status {{ res.estado_css }} flex-shrink-0" style="font-size:0.66rem;">{{ res.estado_label }}</span>
             </div>
 
-            <div class="row g-2 my-3 text-center">
+            <!-- Tres métricas horizontales compactas -->
+            <div class="row g-2 mb-2 text-center">
                 <div class="col-4">
-                    <div class="p-2 rounded" style="background:var(--ap-surface);border:1px solid var(--ap-border);">
-                        <div class="stat-label">Plantas</div>
-                        <div class="fw-semibold num" style="font-size:1.05rem;">{{ item.num_plantas }}</div>
+                    <div class="py-1 px-2 rounded" style="background:var(--ap-surface);border:1px solid var(--ap-border);">
+                        <div class="stat-label" style="font-size:0.62rem;">Plantas</div>
+                        <div class="fw-semibold num" style="font-size:0.95rem;">{{ item.num_plantas }}</div>
                     </div>
                 </div>
                 <div class="col-4">
-                    <div class="p-2 rounded" style="background:var(--ap-surface);border:1px solid var(--ap-border);">
-                        <div class="stat-label">En rango</div>
-                        <div class="fw-semibold num" style="font-size:1.05rem;">
+                    <div class="py-1 px-2 rounded" style="background:var(--ap-surface);border:1px solid var(--ap-border);">
+                        <div class="stat-label" style="font-size:0.62rem;">En rango</div>
+                        <div class="fw-semibold num" style="font-size:0.95rem;">
                             {% if res.porcentaje_en_rango is not None %}{{ res.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
                         </div>
                     </div>
                 </div>
                 <div class="col-4">
-                    <div class="p-2 rounded" style="background:var(--ap-surface);border:1px solid var(--ap-border);">
-                        <div class="stat-label">Alertas</div>
-                        <div class="fw-semibold num {% if item.num_alertas > 0 %}t-danger{% endif %}" style="font-size:1.05rem;">{{ item.num_alertas }}</div>
+                    <div class="py-1 px-2 rounded" style="background:var(--ap-surface);border:1px solid var(--ap-border);">
+                        <div class="stat-label" style="font-size:0.62rem;">Alertas</div>
+                        <div class="fw-semibold num {% if item.num_alertas > 0 %}t-danger{% endif %}" style="font-size:0.95rem;">{{ item.num_alertas }}</div>
                     </div>
                 </div>
             </div>
 
+            <!-- Aviso rápido de 1 línea -->
             {% if item.plantas_riesgo > 0 %}
-            <div class="notice notice-warn mb-3" style="font-size:0.77rem;">
-                <i class="bi bi-exclamation-triangle me-1"></i>{{ item.plantas_riesgo }} planta(s) requieren atención.
+            <div class="notice notice-warn py-1 px-2 mb-2 text-truncate" style="font-size:0.74rem;" title="{{ item.plantas_riesgo }} planta(s) requieren atención">
+                <i class="bi bi-exclamation-triangle me-1"></i>{{ item.plantas_riesgo }} planta(s) requieren atención
             </div>
             {% else %}
-            <div class="t-muted mb-3" style="font-size:0.77rem;">
-                {{ res.recomendaciones.0 }}
+            <div class="t-muted mb-2 text-truncate" style="font-size:0.74rem;" title="{{ res.recomendaciones.0 }}">
+                <i class="bi bi-lightbulb me-1"></i>{{ res.recomendaciones.0 }}
             </div>
             {% endif %}
 
-            <div class="d-flex flex-column gap-2 mt-auto">
-                <a href="{% url 'detalle_instalacion' instalacion.pk %}" class="btn btn-primary-ap btn-sm w-100">
-                    <i class="bi bi-activity"></i>Abrir panel en vivo
+            <!-- Una sola fila de acciones rápidas -->
+            <div class="d-flex flex-wrap gap-1 mt-auto pt-1">
+                <a href="{% url 'detalle_instalacion' instalacion.pk %}" class="btn btn-primary-ap btn-sm flex-grow-1">
+                    <i class="bi bi-activity"></i>Panel
                 </a>
-                <div class="d-flex gap-2">
-                    <a href="{% url 'lista_plantas' instalacion.pk %}" class="btn btn-ghost btn-sm flex-fill">
-                        <i class="bi bi-flower1"></i>Plantas ({{ item.num_plantas }})
-                    </a>
-                    <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm flex-fill">
-                        <i class="bi bi-clock-history"></i>Historial
-                    </a>
-                </div>
-                {% if perms.telemetria.change_instalacion or perms.telemetria.delete_instalacion %}
-                <div class="d-flex gap-2">
-                    {% if perms.telemetria.change_instalacion %}
-                    <a href="{% url 'editar_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm flex-fill">
-                        <i class="bi bi-pencil"></i>Editar
-                    </a>
-                    {% endif %}
-                    {% if perms.telemetria.delete_instalacion %}
-                    <a href="{% url 'eliminar_instalacion' instalacion.pk %}" class="btn btn-ghost-danger btn-sm flex-fill">
-                        <i class="bi bi-trash3"></i>Eliminar
-                    </a>
-                    {% endif %}
-                </div>
+                <a href="{% url 'lista_plantas' instalacion.pk %}" class="btn btn-ghost btn-sm" title="Plantas ({{ item.num_plantas }})">
+                    <i class="bi bi-flower1 me-1"></i>{{ item.num_plantas }}
+                </a>
+                <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm" title="Historial">
+                    <i class="bi bi-clock-history me-0"></i>
+                </a>
+                {% if perms.telemetria.change_instalacion %}
+                <a href="{% url 'editar_instalacion' instalacion.pk %}" class="btn btn-ghost btn-sm" title="Configuración">
+                    <i class="bi bi-sliders me-0"></i>
+                </a>
+                {% endif %}
+                {% if perms.telemetria.delete_instalacion %}
+                <a href="{% url 'eliminar_instalacion' instalacion.pk %}" class="btn btn-ghost-danger btn-sm" title="Eliminar torre">
+                    <i class="bi bi-trash3 me-0"></i>
+                </a>
                 {% endif %}
             </div>
         </div>

@@ -2,191 +2,202 @@
 
 {% block title %}Monitor de Sistemas — AquaPlants{% endblock %}
 
+{% block main_class %}cockpit-main{% endblock %}
+
 {% block content %}
-    <div class="page-head">
-        <div>
-            <h1>Monitor de sistemas</h1>
-            <p>Invernaderos, macetas verticales, plantas monitoreadas y estado en tiempo real.</p>
+    <!-- Barra Cockpit superior con KPIs ejecutivos y filtros -->
+    <div class="cockpit-bar">
+        <div class="cockpit-kpis">
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Invernaderos</span>
+                <strong class="num">{{ total_invernaderos }}</strong>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Torres</span>
+                <strong class="num">{{ total_instalaciones }}</strong>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Plantas</span>
+                <strong class="num">{{ total_plantas }}</strong>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">En riesgo</span>
+                <span class="status {% if plantas_en_riesgo > 0 %}status-err{% else %}status-ok{% endif %} num">{{ plantas_en_riesgo }}</span>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Alertas</span>
+                <a href="{% url 'lista_alertas' %}" class="status {% if num_alertas > 0 %}status-err{% else %}status-ok{% endif %} num">
+                    {{ num_alertas }} activa(s)
+                </a>
+            </div>
         </div>
 
-        <div class="page-actions">
-            {% if perms.telemetria.add_invernadero %}
-            <a href="{% url 'crear_invernadero' %}" class="btn btn-ghost btn-sm">
-                <i class="bi bi-house-add"></i>Nuevo invernadero
-            </a>
-            {% endif %}
+        <div class="cockpit-controls">
+            <div class="d-flex flex-wrap gap-1" id="monitor-filtros">
+                <button type="button" class="cockpit-pill active" data-estado="todas">Todas</button>
+                <button type="button" class="cockpit-pill" data-estado="riesgo">En riesgo</button>
+                <button type="button" class="cockpit-pill" data-estado="optimo">Óptimas</button>
+            </div>
+            <input type="search" id="monitor-buscar" class="form-control form-control-sm" style="width:185px;" placeholder="Buscar torre o sector...">
             {% if perms.telemetria.add_instalacion %}
             <a href="{% url 'crear_instalacion' %}" class="btn btn-primary-ap btn-sm">
-                <i class="bi bi-plus-lg"></i>Nueva torre / maceta
+                <i class="bi bi-plus-lg"></i>Nueva torre
             </a>
             {% endif %}
         </div>
     </div>
 
-    <!-- Resumen ejecutivo -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="panel stat">
-                <div class="stat-label">Invernaderos</div>
-                <div class="stat-value">{{ total_invernaderos }}</div>
-                <div class="stat-note">{{ total_instalaciones }} torre(s) / maceta(s)</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="panel stat">
-                <div class="stat-label">Plantas activas</div>
-                <div class="stat-value">{{ total_plantas }}</div>
-                <div class="stat-note">Monitoreo individual</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="panel stat">
-                <div class="stat-label">Plantas en riesgo</div>
-                <div class="stat-value {% if plantas_en_riesgo > 0 %}t-danger{% else %}t-accent{% endif %}">{{ plantas_en_riesgo }}</div>
-                <div class="stat-note">Estado atención o crítico</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <a href="{% url 'lista_alertas' %}" class="panel stat d-block" style="color:inherit;">
-                <div class="stat-label">Alertas activas</div>
-                <div class="stat-value {% if num_alertas > 0 %}t-danger{% endif %}">{{ num_alertas }}</div>
-                <div class="stat-note">Ir al centro de alertas &rarr;</div>
-            </a>
-        </div>
-    </div>
-
-    <!-- Filtro rápido por invernadero -->
-    {% if invernaderos_filtro %}
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
-        <span class="t-muted" style="font-size:0.8rem;"><i class="bi bi-funnel me-1"></i>Ver:</span>
-        <a href="{% url 'inicio_dashboard' %}" class="btn btn-sm {% if not filtro_inv %}btn-primary-ap{% else %}btn-ghost{% endif %}">
-            Todos
-        </a>
-        {% for inv in invernaderos_filtro %}
-        <a href="{% url 'inicio_dashboard' %}?invernadero={{ inv.pk }}" class="btn btn-sm {% if filtro_inv == inv.pk|stringformat:'s' %}btn-primary-ap{% else %}btn-ghost{% endif %}">
-            <i class="bi bi-buildings me-1"></i>{{ inv.nombre }}
-        </a>
-        {% endfor %}
-        {% if tiene_sin_asignar %}
-        <a href="{% url 'inicio_dashboard' %}?invernadero=sin_asignar" class="btn btn-sm {% if filtro_inv == 'sin_asignar' %}btn-primary-ap{% else %}btn-ghost{% endif %}">
-            Sin invernadero
-        </a>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    <!-- Contenedores por Invernadero -->
-    {% for grupo in grupos_invernaderos %}
-    {% with inv=grupo.invernadero %}
-    <section class="panel mb-4" style="border-left: 3px solid {% if grupo.estado == 'critico' %}var(--ap-danger){% elif grupo.estado == 'atencion' %}var(--ap-warning){% elif grupo.estado == 'optimo' %}var(--ap-accent){% else %}var(--ap-border-strong){% endif %};">
-        <div class="panel-head">
-            <div>
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <h2 class="panel-title" style="font-size:1.05rem;">
-                        <i class="bi bi-buildings me-1 t-accent"></i>{{ inv.nombre }}
-                    </h2>
-                    <span class="status {{ grupo.estado_css }}">{{ grupo.estado_label }}</span>
-                    <span class="tag">{{ grupo.num_torres }} torre(s)</span>
-                    <span class="tag">{{ grupo.num_plantas }} planta(s)</span>
-                    {% if grupo.num_alertas > 0 %}
-                    <span class="status status-err" style="padding:0.18rem 0.5rem;">{{ grupo.num_alertas }} alerta(s)</span>
-                    {% endif %}
+    <!-- Contenedor scrollable acotado para auditar todo en una vista -->
+    <div class="cockpit-scroll" style="padding-right:0.15rem;">
+        <!-- Contenedores por Invernadero -->
+        {% for grupo in grupos_invernaderos %}
+        {% with inv=grupo.invernadero %}
+        <section class="panel mb-3 monitor-section" style="border-left: 3px solid {% if grupo.estado == 'critico' %}var(--ap-danger){% elif grupo.estado == 'atencion' %}var(--ap-warning){% elif grupo.estado == 'optimo' %}var(--ap-accent){% else %}var(--ap-border-strong){% endif %};">
+            <div class="panel-head py-2 px-3">
+                <div>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <h2 class="panel-title" style="font-size:0.96rem;">
+                            <i class="bi bi-buildings me-1 t-accent"></i>{{ inv.nombre }}
+                        </h2>
+                        <span class="status {{ grupo.estado_css }}" style="font-size:0.66rem;">{{ grupo.estado_label }}</span>
+                        <span class="tag num" style="font-size:0.68rem;">{{ grupo.num_torres }} torre(s)</span>
+                        <span class="tag num" style="font-size:0.68rem;">{{ grupo.num_plantas }} planta(s)</span>
+                        {% if grupo.num_alertas > 0 %}
+                        <span class="status status-err num" style="padding:0.16rem 0.45rem;font-size:0.66rem;">{{ grupo.num_alertas }} alerta(s)</span>
+                        {% endif %}
+                        {% if inv.sector %}
+                        <span class="t-muted" style="font-size:0.75rem;">&middot; {{ inv.sector }}</span>
+                        {% endif %}
+                    </div>
                 </div>
-                {% if inv.sector or inv.descripcion %}
-                <p class="panel-sub">
-                    {% if inv.sector %}{{ inv.sector }}{% endif %}
-                    {% if inv.sector and inv.descripcion %} &middot; {% endif %}
-                    {% if inv.descripcion %}{{ inv.descripcion }}{% endif %}
-                </p>
-                {% endif %}
-            </div>
 
-            <div class="d-flex flex-wrap gap-2 align-items-center">
-                {% if perms.telemetria.add_instalacion %}
-                <a href="{% url 'crear_instalacion' %}?invernadero={{ inv.pk }}" class="btn btn-primary-ap btn-sm">
-                    <i class="bi bi-plus-lg"></i>Agregar torre aquí
-                </a>
-                {% endif %}
-                {% if perms.telemetria.change_invernadero %}
-                <a href="{% url 'editar_invernadero' inv.pk %}" class="btn btn-ghost btn-sm" title="Editar invernadero">
-                    <i class="bi bi-pencil"></i>
-                </a>
-                {% endif %}
-                {% if perms.telemetria.delete_invernadero %}
-                <a href="{% url 'eliminar_invernadero' inv.pk %}" class="btn btn-ghost-danger btn-sm" title="Eliminar invernadero">
-                    <i class="bi bi-trash3"></i>
-                </a>
-                {% endif %}
-                <button class="btn btn-ghost btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#inv-{{ inv.pk }}" aria-expanded="true" title="Mostrar / ocultar torres">
-                    <i class="bi bi-chevron-expand"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="collapse show" id="inv-{{ inv.pk }}">
-            <div class="panel-body">
-                {% if grupo.tarjetas %}
-                <div class="row g-3">
-                    {% for item in grupo.tarjetas %}
-                        {% include "dashboard/_tarjeta_instalacion.html" %}
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-4 t-muted">
-                    Este invernadero aún no tiene torres o macetas verticales asignadas.
+                <div class="d-flex flex-wrap gap-1 align-items-center">
                     {% if perms.telemetria.add_instalacion %}
-                    <div class="mt-2">
-                        <a href="{% url 'crear_instalacion' %}?invernadero={{ inv.pk }}" class="btn btn-ghost btn-sm">
-                            <i class="bi bi-plus-lg"></i>Agregar la primera torre
-                        </a>
+                    <a href="{% url 'crear_instalacion' %}?invernadero={{ inv.pk }}" class="btn btn-primary-ap btn-sm">
+                        <i class="bi bi-plus-lg"></i>Torre aquí
+                    </a>
+                    {% endif %}
+                    {% if perms.telemetria.change_invernadero %}
+                    <a href="{% url 'editar_invernadero' inv.pk %}" class="btn btn-ghost btn-sm" title="Editar invernadero">
+                        <i class="bi bi-pencil me-0"></i>
+                    </a>
+                    {% endif %}
+                    {% if perms.telemetria.delete_invernadero %}
+                    <a href="{% url 'eliminar_invernadero' inv.pk %}" class="btn btn-ghost-danger btn-sm" title="Eliminar invernadero">
+                        <i class="bi bi-trash3 me-0"></i>
+                    </a>
+                    {% endif %}
+                    <button class="btn btn-ghost btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#inv-{{ inv.pk }}" aria-expanded="true" title="Mostrar / ocultar torres">
+                        <i class="bi bi-chevron-expand me-0"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="collapse show" id="inv-{{ inv.pk }}">
+                <div class="panel-body p-3">
+                    {% if grupo.tarjetas %}
+                    <div class="row g-2">
+                        {% for item in grupo.tarjetas %}
+                            {% include "dashboard/_tarjeta_instalacion.html" %}
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3 t-muted" style="font-size:0.82rem;">
+                        Este invernadero aún no tiene torres asignadas.
+                        {% if perms.telemetria.add_instalacion %}
+                        <a href="{% url 'crear_instalacion' %}?invernadero={{ inv.pk }}" class="t-accent fw-semibold ms-1">+ Agregar primera torre</a>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
-                {% endif %}
             </div>
-        </div>
-    </section>
-    {% endwith %}
-    {% endfor %}
+        </section>
+        {% endwith %}
+        {% endfor %}
 
-    <!-- Torres / Macetas sin invernadero asignado (retrocompatibilidad) -->
-    {% if tarjetas_sin_invernadero %}
-    <section class="panel mb-4">
-        {% if grupos_invernaderos %}
-        <div class="panel-head">
-            <div>
-                <h2 class="panel-title" style="font-size:1rem;">Torres independientes (sin invernadero asignado)</h2>
-                <p class="panel-sub">Puedes asignarlas a un invernadero desde Editar.</p>
+        <!-- Torres / Macetas independientes -->
+        {% if tarjetas_sin_invernadero %}
+        <section class="panel mb-3 monitor-section">
+            <div class="panel-head py-2 px-3">
+                <div>
+                    <h2 class="panel-title" style="font-size:0.95rem;">
+                        <i class="bi bi-diagram-2 me-1 t-muted"></i>Torres independientes (sin invernadero)
+                    </h2>
+                </div>
+                <span class="tag num" style="font-size:0.68rem;">{{ tarjetas_sin_invernadero|length }} torre(s)</span>
+            </div>
+            <div class="panel-body p-3">
+                <div class="row g-2">
+                    {% for item in tarjetas_sin_invernadero %}
+                        {% include "dashboard/_tarjeta_instalacion.html" %}
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if not grupos_invernaderos and not tarjetas_sin_invernadero %}
+        <div class="panel">
+            <div class="panel-body text-center py-5">
+                <p class="t-muted mb-3">
+                    {% if es_admin %}
+                        No hay invernaderos ni torres registradas todavía.
+                    {% else %}
+                        Tu cuenta aún no tiene instalaciones asignadas. Solicita acceso a un Administrador.
+                    {% endif %}
+                </p>
+                {% if perms.telemetria.add_invernadero %}
+                <a href="{% url 'crear_invernadero' %}" class="btn btn-ghost btn-sm me-2"><i class="bi bi-house-add"></i>Crear invernadero</a>
+                {% endif %}
+                {% if perms.telemetria.add_instalacion %}
+                <a href="{% url 'crear_instalacion' %}" class="btn btn-primary-ap btn-sm"><i class="bi bi-plus-lg"></i>Crear torre / maceta</a>
+                {% endif %}
             </div>
         </div>
         {% endif %}
-        <div class="panel-body">
-            <div class="row g-3">
-                {% for item in tarjetas_sin_invernadero %}
-                    {% include "dashboard/_tarjeta_instalacion.html" %}
-                {% endfor %}
-            </div>
-        </div>
-    </section>
-    {% endif %}
-
-    {% if not grupos_invernaderos and not tarjetas_sin_invernadero %}
-    <div class="panel">
-        <div class="panel-body text-center py-5">
-            <p class="t-muted mb-3">
-                {% if es_admin %}
-                    No hay invernaderos ni torres registradas todavía.
-                {% else %}
-                    Tu cuenta aún no tiene instalaciones asignadas. Solicita acceso a un Administrador.
-                {% endif %}
-            </p>
-            {% if perms.telemetria.add_invernadero %}
-            <a href="{% url 'crear_invernadero' %}" class="btn btn-ghost btn-sm me-2"><i class="bi bi-house-add"></i>Crear invernadero</a>
-            {% endif %}
-            {% if perms.telemetria.add_instalacion %}
-            <a href="{% url 'crear_instalacion' %}" class="btn btn-primary-ap btn-sm"><i class="bi bi-plus-lg"></i>Crear torre / maceta</a>
-            {% endif %}
-        </div>
     </div>
-    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const cards = Array.from(document.querySelectorAll('.monitor-card-col'));
+        const pills = document.querySelectorAll('#monitor-filtros .cockpit-pill');
+        const input = document.getElementById('monitor-buscar');
+        let filtro = 'todas';
+
+        function filtrar() {
+            const q = (input ? input.value : '').trim().toLowerCase();
+            cards.forEach(col => {
+                const matchTxt = !q || (col.dataset.texto || '').includes(q);
+                let matchEst = true;
+                if (filtro === 'riesgo') {
+                    matchEst = col.dataset.estado === 'critico' || col.dataset.estado === 'atencion';
+                } else if (filtro === 'optimo') {
+                    matchEst = col.dataset.estado === 'optimo';
+                }
+                col.style.display = (matchTxt && matchEst) ? '' : 'none';
+            });
+            document.querySelectorAll('.monitor-section').forEach(sec => {
+                const cols = sec.querySelectorAll('.monitor-card-col');
+                if (!cols.length) return;
+                const hayVisible = Array.from(cols).some(c => c.style.display !== 'none');
+                sec.style.display = hayVisible ? '' : 'none';
+            });
+        }
+
+        pills.forEach(p => {
+            p.addEventListener('click', () => {
+                filtro = p.dataset.estado;
+                pills.forEach(b => b.classList.toggle('active', b === p));
+                filtrar();
+            });
+        });
+        if (input) input.addEventListener('input', filtrar);
+    })();
+</script>
 {% endblock %}
