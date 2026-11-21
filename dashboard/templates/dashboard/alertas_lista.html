@@ -5,15 +5,6 @@
 {% block main_class %}cockpit-main{% endblock %}
 
 {% block content %}
-    {% if not instalacion %}
-        <div class="page-head mb-2">
-            <div>
-                <h1>Centro de alertas y notificaciones</h1>
-                <p>Audita, filtra y gestiona alertas activas e históricas del sistema.</p>
-            </div>
-        </div>
-    {% endif %}
-
     <!-- Barra Cockpit: KPIs + filtros compactos + acción masiva -->
     <div class="cockpit-bar">
         <div class="cockpit-kpis">
@@ -29,7 +20,7 @@
             <span class="cockpit-sep"></span>
             <div class="cockpit-kpi">
                 <span class="cockpit-kpi-lbl">Azules</span>
-                <strong class="num" style="color:#7fb0e2;">{{ total_azules }}</strong>
+                <strong class="num limit-lo">{{ total_azules }}</strong>
             </div>
             <span class="cockpit-sep"></span>
             <div class="cockpit-kpi">
@@ -88,7 +79,9 @@
     <div class="panel">
         <div class="panel-head py-2 px-3">
             <div>
-                <h2 class="panel-title">Registro de alertas</h2>
+                <h1 class="panel-title">
+                    {% if instalacion %}Registro de alertas — {{ instalacion.nombre }}{% else %}Centro de alertas y notificaciones{% endif %}
+                </h1>
             </div>
             <span class="tag num">{{ alertas|length }} resultado(s)</span>
         </div>

@@ -2,66 +2,119 @@
 
 {% block title %}Gestión de Usuarios — AquaPlants{% endblock %}
 
+{% block main_class %}cockpit-main{% endblock %}
+
 {% block content %}
-    <div class="page-head">
-        <div>
-            <h1>Gestión de usuarios y permisos</h1>
-            <p>Crea cuentas, asigna roles operativos y define a qué instalaciones tiene acceso cada usuario.</p>
+    <!-- Barra Cockpit de usuarios y roles -->
+    <div class="cockpit-bar">
+        <div class="cockpit-kpis">
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Usuarios</span>
+                <strong class="num">{{ total_usuarios }}</strong>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Activos</span>
+                <span class="status status-ok num">{{ num_activos }}</span>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Admin</span>
+                <strong class="num">{{ num_admins }}</strong>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Encargados</span>
+                <strong class="num t-accent">{{ num_encargados }}</strong>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Supervisores</span>
+                <strong class="num">{{ num_supervisores }}</strong>
+            </div>
         </div>
-        <div class="page-actions">
+
+        <div class="cockpit-controls">
+            <div class="d-flex flex-wrap gap-1" id="usuarios-filtros">
+                <button type="button" class="cockpit-pill active" data-rol="todos">Todos</button>
+                <button type="button" class="cockpit-pill" data-rol="admin">Admin</button>
+                <button type="button" class="cockpit-pill" data-rol="encargado">Encargado</button>
+                <button type="button" class="cockpit-pill" data-rol="supervisor">Supervisor</button>
+            </div>
+            <input type="search" id="usuarios-buscar" class="form-control form-control-sm" style="width:185px;" placeholder="Buscar usuario o torre...">
             <a href="{% url 'crear_usuario' %}" class="btn btn-primary-ap btn-sm">
                 <i class="bi bi-person-plus"></i>Nuevo usuario
             </a>
         </div>
     </div>
 
+    <!-- Tabla compacta con cabecera fija sin scroll de página -->
     <div class="panel">
-        <div class="table-responsive">
-            <table class="tbl">
+        <div class="panel-head py-2 px-3">
+            <div>
+                <h1 class="panel-title">Control de usuarios y permisos RBAC</h1>
+                <p class="panel-sub">Asigna roles operativos y define qué torres puede monitorear o gestionar cada cuenta.</p>
+            </div>
+            <span id="usuarios-visibles" class="tag num">{{ filas|length }} visible(s)</span>
+        </div>
+        <div class="table-responsive cockpit-scroll">
+            <table class="tbl tbl-compact">
                 <thead>
                     <tr>
                         <th>Usuario</th>
                         <th>Nombre</th>
                         <th>Rol</th>
-                        <th>Instalaciones asignadas</th>
+                        <th>Torres asignadas</th>
                         <th>Estado</th>
                         <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for f in filas %}
-                    <tr>
+                    <tr
+                        class="usuario-row"
+                        data-rol="{% if f.rol == 'Administrador' or f.obj.is_superuser %}admin{% elif f.rol == 'Encargado de cultivo' %}encargado{% elif f.rol == 'Supervisor' %}supervisor{% else %}otro{% endif %}"
+                        data-texto="{{ f.obj.username|lower }} {{ f.obj.get_full_name|lower }} {{ f.obj.email|lower }} {{ f.rol|lower }} {% for inst in f.instalaciones %}{{ inst.nombre|lower }} {% endfor %}"
+                    >
                         <td>
                             <strong>{{ f.obj.username }}</strong>
-                            {% if f.obj.email %}<div class="t-muted" style="font-size:0.76rem;">{{ f.obj.email }}</div>{% endif %}
+                            {% if f.obj.email %}<div class="t-muted" style="font-size:0.72rem;">{{ f.obj.email }}</div>{% endif %}
                         </td>
                         <td>{{ f.obj.get_full_name|default:"—" }}</td>
-                        <td><span class="tag">{{ f.rol }}</span></td>
                         <td>
                             {% if f.rol == 'Administrador' or f.obj.is_superuser %}
-                                <span class="t-accent" style="font-size:0.8rem;">Todas (acceso global)</span>
+                                <span class="status status-warn" style="font-size:0.68rem;">{{ f.rol }}</span>
+                            {% elif f.rol == 'Encargado de cultivo' %}
+                                <span class="status status-ok" style="font-size:0.68rem;">{{ f.rol }}</span>
+                            {% else %}
+                                <span class="tag" style="font-size:0.7rem;">{{ f.rol }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if f.rol == 'Administrador' or f.obj.is_superuser %}
+                                <span class="t-accent" style="font-size:0.78rem;">Todas (acceso global)</span>
                             {% else %}
                                 {% for inst in f.instalaciones %}
-                                    <span class="tag me-1">{{ inst.nombre }}</span>
+                                    <span class="tag me-1" style="font-size:0.68rem;">{{ inst.nombre }}</span>
                                 {% empty %}
-                                    <span class="t-muted" style="font-size:0.8rem;">Sin asignar</span>
+                                    <span class="t-muted" style="font-size:0.78rem;">Sin asignar</span>
                                 {% endfor %}
                             {% endif %}
                         </td>
                         <td>
                             {% if f.obj.is_active %}
-                                <span class="status status-ok">Activo</span>
+                                <span class="status status-ok" style="font-size:0.68rem;">Activo</span>
                             {% else %}
-                                <span class="status status-off">Inactivo</span>
+                                <span class="status status-off" style="font-size:0.68rem;">Inactivo</span>
                             {% endif %}
                         </td>
                         <td class="text-end" style="white-space:nowrap;">
-                            <a href="{% url 'editar_usuario' f.obj.pk %}" class="btn btn-ghost btn-sm me-1">
+                            <a href="{% url 'editar_usuario' f.obj.pk %}" class="btn btn-ghost btn-sm me-1" title="Editar usuario">
                                 <i class="bi bi-pencil"></i>Editar
                             </a>
                             {% if f.obj.pk != request.user.pk %}
-                            <a href="{% url 'eliminar_usuario' f.obj.pk %}" class="btn btn-ghost-danger btn-sm">
-                                <i class="bi bi-trash3"></i>Eliminar
+                            <a href="{% url 'eliminar_usuario' f.obj.pk %}" class="btn btn-ghost-danger btn-sm" title="Eliminar usuario">
+                                <i class="bi bi-trash3 me-0"></i>
                             </a>
                             {% endif %}
                         </td>
@@ -75,4 +128,38 @@
             </table>
         </div>
     </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const filas = Array.from(document.querySelectorAll('.usuario-row'));
+        const pills = document.querySelectorAll('#usuarios-filtros .cockpit-pill');
+        const input = document.getElementById('usuarios-buscar');
+        const badge = document.getElementById('usuarios-visibles');
+        let rol = 'todos';
+
+        function filtrar() {
+            const q = (input ? input.value : '').trim().toLowerCase();
+            let visibles = 0;
+            filas.forEach(tr => {
+                const matchTxt = !q || (tr.dataset.texto || '').includes(q);
+                const matchRol = rol === 'todos' || tr.dataset.rol === rol;
+                const ver = matchTxt && matchRol;
+                tr.style.display = ver ? '' : 'none';
+                if (ver) visibles += 1;
+            });
+            if (badge) badge.textContent = `${visibles} visible(s)`;
+        }
+
+        pills.forEach(p => {
+            p.addEventListener('click', () => {
+                rol = p.dataset.rol;
+                pills.forEach(b => b.classList.toggle('active', b === p));
+                filtrar();
+            });
+        });
+        if (input) input.addEventListener('input', filtrar);
+    })();
+</script>
 {% endblock %}

@@ -1,0 +1,127 @@
+<aside class="yt-sidebar" id="yt-sidebar" aria-label="Menú lateral de operación">
+    <!-- Identidad de la sección global -->
+    <div class="yt-tower-box">
+        <a href="{% url 'inicio_dashboard' %}" class="yt-back-link" title="Volver al Monitor">
+            <i class="bi bi-arrow-left"></i>
+            <span class="yt-text">Monitor general</span>
+        </a>
+
+        {% if request.resolver_match.url_name == 'lista_usuarios' %}
+        <div class="yt-tower-title" title="Gestión de Usuarios">
+            <i class="bi bi-people t-accent flex-shrink-0"></i>
+            <span class="yt-text fw-semibold">Usuarios y roles</span>
+        </div>
+        <div class="yt-tower-meta yt-text">
+            {{ total_usuarios }} cuenta(s) &middot; {{ num_activos }} activa(s)
+        </div>
+        {% else %}
+        <div class="yt-tower-title" title="Centro de Alertas">
+            <i class="bi bi-bell t-accent flex-shrink-0"></i>
+            <span class="yt-text fw-semibold">Centro de alertas</span>
+        </div>
+        <div class="yt-tower-meta yt-text">
+            {% if total_pendientes > 0 %}
+                <span class="t-danger">{{ total_pendientes }} sin leer</span>
+            {% else %}
+                <span class="t-accent">Todo al día</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <hr class="yt-divider">
+
+    <!-- Navegación principal estilo YouTube -->
+    <div class="yt-section">
+        <div class="yt-section-lbl yt-text">
+            <span>Operación</span>
+            <i class="bi bi-chevron-right" style="font-size:0.7rem;"></i>
+        </div>
+
+        <a href="{% url 'inicio_dashboard' %}" class="yt-item" title="Monitor de sistemas">
+            <i class="bi bi-grid"></i>
+            <span class="yt-text">Monitor general</span>
+        </a>
+
+        <a href="{% url 'lista_alertas' %}" class="yt-item {% if request.resolver_match.url_name == 'lista_alertas' %}active{% endif %}" title="Centro de alertas">
+            <i class="bi bi-bell"></i>
+            <span class="yt-text flex-grow-1">Alertas</span>
+            {% if global_num_alertas > 0 %}
+            <span class="yt-count yt-text" style="border-color:rgba(244,63,94,.45);color:#fb7185;">{{ global_num_alertas }}</span>
+            {% endif %}
+        </a>
+
+        {% if request.user.is_superuser or perms.auth.view_user %}
+        <a href="{% url 'lista_usuarios' %}" class="yt-item {% if request.resolver_match.url_name == 'lista_usuarios' %}active{% endif %}" title="Gestión de usuarios">
+            <i class="bi bi-people"></i>
+            <span class="yt-text">Usuarios</span>
+        </a>
+        {% endif %}
+    </div>
+
+    <hr class="yt-divider">
+
+    {% if request.resolver_match.url_name == 'lista_alertas' %}
+    <!-- Filtros rápidos de alertas en la barra lateral -->
+    <div class="yt-section">
+        <div class="yt-section-lbl yt-text">
+            <span>Filtros de alerta</span>
+        </div>
+
+        <a href="{% url 'lista_alertas' %}" class="yt-item {% if not filtro_estado and not filtro_severidad %}active{% endif %}" title="Todas las alertas">
+            <i class="bi bi-inboxes"></i>
+            <span class="yt-text">Todas</span>
+        </a>
+
+        <a href="{% url 'lista_alertas' %}?estado=pendientes" class="yt-item {% if filtro_estado == 'pendientes' %}active{% endif %}" title="Alertas sin leer">
+            <i class="bi bi-exclamation-circle"></i>
+            <span class="yt-text flex-grow-1">Sin leer</span>
+            <span class="yt-count yt-text">{{ total_pendientes }}</span>
+        </a>
+
+        <a href="{% url 'lista_alertas' %}?severidad=roja" class="yt-item {% if filtro_severidad == 'roja' %}active{% endif %}" title="Alertas Rojas">
+            <i class="bi bi-thermometer-high" style="color:#fb7185;"></i>
+            <span class="yt-text flex-grow-1">Alertas Rojas</span>
+            <span class="yt-count yt-text">{{ total_rojas }}</span>
+        </a>
+
+        <a href="{% url 'lista_alertas' %}?severidad=azul" class="yt-item {% if filtro_severidad == 'azul' %}active{% endif %}" title="Alertas Azules">
+            <i class="bi bi-droplet" style="color:#38bdf8;"></i>
+            <span class="yt-text flex-grow-1">Alertas Azules</span>
+            <span class="yt-count yt-text">{{ total_azules }}</span>
+        </a>
+
+        <a href="{% url 'lista_alertas' %}?estado=leidas" class="yt-item {% if filtro_estado == 'leidas' %}active{% endif %}" title="Alertas leídas">
+            <i class="bi bi-check2-circle"></i>
+            <span class="yt-text">Resueltas / Leídas</span>
+        </a>
+    </div>
+    {% else %}
+    <!-- Accesos rápidos en Usuarios -->
+    <div class="yt-section">
+        <div class="yt-section-lbl yt-text">
+            <span>Accesos rápidos</span>
+        </div>
+
+        <a href="{% url 'crear_usuario' %}" class="yt-item" title="Nuevo usuario">
+            <i class="bi bi-person-plus"></i>
+            <span class="yt-text">Nuevo usuario</span>
+        </a>
+
+        {% if perms.telemetria.add_instalacion %}
+        <a href="{% url 'crear_instalacion' %}" class="yt-item" title="Nueva torre">
+            <i class="bi bi-plus-circle"></i>
+            <span class="yt-text">Nueva torre</span>
+        </a>
+        {% endif %}
+
+        {% if perms.telemetria.add_invernadero %}
+        <a href="{% url 'crear_invernadero' %}" class="yt-item" title="Nuevo invernadero">
+            <i class="bi bi-house-add"></i>
+            <span class="yt-text">Nuevo invernadero</span>
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</aside>
+<div class="yt-backdrop" id="yt-backdrop"></div>

@@ -706,15 +706,36 @@ def lista_usuarios(request):
     usuarios = User.objects.prefetch_related('groups', 'instalaciones_asignadas').order_by('username')
 
     filas = []
+    num_admins = 0
+    num_encargados = 0
+    num_supervisores = 0
+    num_activos = 0
     for u in usuarios:
         rol = u.groups.first().name if u.groups.exists() else ('Superusuario' if u.is_superuser else 'Sin rol')
+        if rol == 'Administrador' or u.is_superuser:
+            num_admins += 1
+        elif rol == 'Encargado de cultivo':
+            num_encargados += 1
+        elif rol == 'Supervisor':
+            num_supervisores += 1
+        if u.is_active:
+            num_activos += 1
         filas.append({
             'obj': u,
             'rol': rol,
             'instalaciones': list(u.instalaciones_asignadas.all()),
         })
 
-    return render(request, 'dashboard/usuarios_lista.html', {'filas': filas, 'es_admin': True})
+    contexto = {
+        'filas': filas,
+        'es_admin': True,
+        'total_usuarios': len(filas),
+        'num_admins': num_admins,
+        'num_encargados': num_encargados,
+        'num_supervisores': num_supervisores,
+        'num_activos': num_activos,
+    }
+    return render(request, 'dashboard/usuarios_lista.html', contexto)
 
 
 @login_required(login_url='login')
