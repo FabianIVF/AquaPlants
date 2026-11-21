@@ -115,12 +115,9 @@ def _construir_payload_live(sensores, nombre_objetivo):
             ],
         }
 
-    alertas_qs = (
-        AlertaGenerada.objects
-        .filter(regla__sensor__in=sensores_list, leida=False)
-        .order_by('-fecha_generacion')[:5]
-        .values('mensaje', 'fecha_generacion', 'leida')
-    )
+    alertas_base = AlertaGenerada.objects.filter(regla__sensor__in=sensores_list, leida=False)
+    total_alertas = alertas_base.count()
+    alertas_qs = alertas_base.order_by('-fecha_generacion')[:8].values('mensaje', 'fecha_generacion', 'leida')
     alertas = [
         {
             "mensaje": a["mensaje"],
@@ -135,7 +132,7 @@ def _construir_payload_live(sensores, nombre_objetivo):
         "instalacion": nombre_objetivo,
         "sensores": datos_sensores,
         "alertas": alertas,
-        "num_alertas": len(alertas),
+        "num_alertas": total_alertas,
         "resumen": {
             "estado": resumen["estado"],
             "estado_label": resumen["estado_label"],
@@ -248,8 +245,16 @@ def detalle_instalacion(request, instalacion_id):
     sensores = list(Sensor.objects.filter(instalacion=instalacion, activo=True, planta__isnull=True))
     reglas = ReglaAlerta.objects.filter(sensor__instalacion=instalacion).select_related('sensor', 'sensor__planta')
     resumen = resumen_sensores(sensores)
-    plantas = list(instalacion.plantas.filter(activa=True)[:4])
+    plantas = list(instalacion.plantas.filter(activa=True)[:6])
     num_plantas = instalacion.plantas.count()
+    alertas_qs = (
+        AlertaGenerada.objects
+        .filter(regla__sensor__instalacion=instalacion, leida=False)
+        .select_related('regla__sensor')
+        .order_by('-fecha_generacion')
+    )
+    total_alertas_activas = alertas_qs.count()
+    alertas_activas = list(alertas_qs[:8])
 
     contexto = {
         'instalacion': instalacion,
@@ -258,6 +263,8 @@ def detalle_instalacion(request, instalacion_id):
         'resumen': resumen,
         'plantas_destacadas': plantas,
         'num_plantas': num_plantas,
+        'alertas_activas': alertas_activas,
+        'total_alertas_activas': total_alertas_activas,
         'tab_activa': 'panel',
         'usuario': request.user,
     }

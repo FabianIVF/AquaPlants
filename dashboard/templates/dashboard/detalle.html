@@ -1,311 +1,789 @@
 {% extends "dashboard/base.html" %}
 
-{% block title %}Panel en vivo — {{ instalacion.nombre }}{% endblock %}
+{% block title %}Panel de control — {{ instalacion.nombre }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Compactar marco superior solo en el Cockpit para auditar sin scroll */
+    .app-main { padding-top: 0.9rem; padding-bottom: 1.25rem; }
+    .inst-header { margin-bottom: 0.65rem; }
+    .inst-tabs { margin-bottom: 0.85rem; padding-bottom: 0.45rem; }
+
+    /* ---------- Barra superior de auditoría ---------- */
+    .cockpit-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.65rem 1rem;
+        padding: 0.55rem 0.9rem;
+        margin-bottom: 0.85rem;
+        background: var(--ap-surface);
+        border: 1px solid var(--ap-border);
+        border-radius: var(--ap-radius);
+    }
+    .cockpit-kpis {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.85rem 1.25rem;
+    }
+    .cockpit-kpi {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.82rem;
+    }
+    .cockpit-kpi-lbl {
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--ap-muted);
+    }
+    .cockpit-sep {
+        width: 1px;
+        height: 18px;
+        background: var(--ap-border-strong);
+    }
+    .cockpit-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin-left: auto;
+    }
+    .cockpit-hint {
+        max-width: 340px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.78rem;
+        color: var(--ap-muted);
+    }
+
+    /* ---------- Grilla principal 2 columnas (Cockpit) ---------- */
+    .cockpit-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr);
+        gap: 0.85rem;
+        align-items: stretch;
+    }
+    .cockpit-left {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        min-width: 0;
+    }
+
+    /* ---------- Matriz compacta de sensores ---------- */
+    .sensor-matrix {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+        gap: 0.55rem;
+    }
+    .sensor-tile {
+        text-align: left;
+        background: var(--ap-surface);
+        border: 1px solid var(--ap-border);
+        border-radius: var(--ap-radius);
+        padding: 0.65rem 0.78rem;
+        cursor: pointer;
+        transition: border-color .15s, background-color .15s, box-shadow .15s;
+        color: var(--ap-text);
+        width: 100%;
+    }
+    .sensor-tile:hover {
+        border-color: var(--ap-border-strong);
+        background: var(--ap-surface-2);
+    }
+    .sensor-tile.active {
+        border-color: var(--ap-accent);
+        background: rgba(52, 163, 124, 0.06);
+        box-shadow: inset 0 0 0 1px rgba(52, 163, 124, 0.25);
+    }
+    .sensor-tile.tile-out {
+        border-color: rgba(212, 87, 79, 0.55);
+    }
+    .sensor-tile-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.35rem;
+        margin-bottom: 0.25rem;
+    }
+    .sensor-tile-name {
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--ap-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sensor-tile-val {
+        font-size: 1.45rem;
+        font-weight: 600;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+    }
+    .sensor-tile-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.35rem;
+        margin-top: 0.35rem;
+        font-size: 0.69rem;
+        color: var(--ap-muted);
+    }
+
+    /* ---------- Gráfico principal enfocado ---------- */
+    .chart-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 295px;
+    }
+    .chart-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .chart-pill {
+        border: 1px solid var(--ap-border-strong);
+        background: transparent;
+        color: var(--ap-muted);
+        font-size: 0.72rem;
+        font-weight: 500;
+        padding: 0.2rem 0.52rem;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all .15s;
+    }
+    .chart-pill:hover { color: var(--ap-text); background: var(--ap-surface-2); }
+    .chart-pill.active {
+        color: #fff;
+        background: var(--ap-accent);
+        border-color: var(--ap-accent);
+    }
+    .chart-canvas-wrap {
+        position: relative;
+        flex: 1;
+        min-height: 215px;
+        max-height: 255px;
+        padding: 0.7rem 0.9rem 0.6rem;
+    }
+
+    /* ---------- Consola derecha de auditoría por pestañas ---------- */
+    .audit-panel {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        height: 100%;
+    }
+    .audit-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        padding: 0.55rem 0.75rem;
+        border-bottom: 1px solid var(--ap-border);
+        background: var(--ap-surface);
+    }
+    .audit-tab-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--ap-muted);
+        font-size: 0.78rem;
+        font-weight: 500;
+        padding: 0.32rem 0.62rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all .15s;
+    }
+    .audit-tab-btn:hover { color: var(--ap-text); background: var(--ap-surface-2); }
+    .audit-tab-btn.active {
+        color: var(--ap-text);
+        background: var(--ap-surface-2);
+        border-color: var(--ap-border-strong);
+        box-shadow: inset 0 -2px 0 var(--ap-accent);
+    }
+    .audit-body {
+        flex: 1;
+        min-height: 360px;
+        max-height: 445px;
+        overflow-y: auto;
+    }
+    .audit-pane { display: none; height: 100%; }
+    .audit-pane.active { display: block; }
+    .audit-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0.85rem;
+        border-top: 1px solid var(--ap-border);
+        font-size: 0.76rem;
+        color: var(--ap-muted);
+    }
+    .alert-feed-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.6rem;
+        padding: 0.62rem 0.9rem;
+        border-bottom: 1px solid var(--ap-border);
+        font-size: 0.8rem;
+    }
+    .alert-feed-item:last-child { border-bottom: 0; }
+    .plant-mini-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.5rem 0.9rem;
+        border-bottom: 1px solid var(--ap-border);
+        font-size: 0.8rem;
+    }
+    .plant-mini-row:last-child { border-bottom: 0; }
+
+    @media (max-width: 1199.98px) {
+        .cockpit-grid { grid-template-columns: 1fr; }
+        .audit-body { max-height: 380px; }
+    }
+    @media (max-width: 767.98px) {
+        .cockpit-sep, .cockpit-hint { display: none; }
+        .sensor-matrix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
     {% include "dashboard/_instalacion_nav.html" %}
 
-    <!-- Diagnóstico e información útil para el cultivador -->
-    <div class="panel mb-4">
-        <div class="panel-body">
-            <div class="row g-3 align-items-center">
-                <div class="col-6 col-md-2">
-                    <div class="stat-label mb-1">Estado general</div>
-                    <span id="diag-estado" class="status {{ resumen.estado_css }}">{{ resumen.estado_label }}</span>
-                    <div class="stat-note mt-2">Refresco: <strong id="segundos-restantes" class="num">5</strong>s</div>
-                </div>
-                <div class="col-6 col-md-2">
-                    <div class="stat-label">En rango</div>
-                    <div id="diag-pct" class="fw-semibold num" style="font-size:1.35rem;">
-                        {% if resumen.porcentaje_en_rango is not None %}{{ resumen.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
+    <!-- Barra única de estado, KPIs y control de refresco -->
+    <div class="cockpit-bar">
+        <div class="cockpit-kpis">
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Estado</span>
+                <span id="diag-estado" class="status {{ resumen.estado_css }}">{{ resumen.estado_label }}</span>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">En rango</span>
+                <strong id="diag-pct" class="num">
+                    {% if resumen.porcentaje_en_rango is not None %}{{ resumen.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
+                </strong>
+                <span class="t-muted" style="font-size:0.74rem;">(<span id="diag-tendencia">{{ resumen.tendencia }}</span>)</span>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Alertas</span>
+                <button type="button" id="cockpit-alertas-btn" class="btn btn-link-ap btn-sm p-0 num" onclick="activarAuditTab('alertas')">
+                    <span id="badge-alertas" class="status {% if total_alertas_activas > 0 %}status-err{% else %}status-ok{% endif %}">
+                        {{ total_alertas_activas }} activa(s)
+                    </span>
+                </button>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Plantas</span>
+                <a href="{% url 'lista_plantas' instalacion.pk %}" class="fw-semibold t-accent num">{{ num_plantas }}</a>
+            </div>
+        </div>
+
+        <div class="cockpit-controls">
+            <span id="diag-rec-principal" class="cockpit-hint" title="{{ resumen.recomendaciones.0 }}">
+                <i class="bi bi-lightbulb me-1"></i>{{ resumen.recomendaciones.0 }}
+            </span>
+            <span class="tag num" style="font-size:0.74rem;">
+                <i class="bi bi-arrow-repeat me-1"></i><strong id="segundos-restantes">5</strong>s
+            </span>
+            <button type="button" id="btn-toggle-live" class="btn btn-ghost btn-sm" title="Pausar o reanudar refresco automático">
+                <i class="bi bi-pause-fill me-0"></i>
+            </button>
+            <button type="button" id="btn-refresh-now" class="btn btn-ghost btn-sm" title="Actualizar ahora">
+                <i class="bi bi-arrow-clockwise me-0"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Grilla Cockpit sin scroll -->
+    <div class="cockpit-grid">
+        <!-- ZONA IZQUIERDA: Matriz de sensores + Gráfico enfocado -->
+        <div class="cockpit-left">
+            <!-- Tarjetas compactas e interactivas de sensores -->
+            <div class="sensor-matrix" id="tarjetas-sensores">
+                {% for item in resumen.sensores_detalle %}
+                {% with sensor=item.sensor %}
+                <button
+                    type="button"
+                    class="sensor-tile {% if forloop.first %}active{% endif %}"
+                    data-sensor="{{ sensor.tipo }}"
+                    data-label="{{ sensor.get_tipo_display }}"
+                    data-unit="{{ sensor.get_unidad }}"
+                    data-min="{% if item.rango_min is not None %}{{ item.rango_min|stringformat:'g' }}{% endif %}"
+                    data-max="{% if item.rango_max is not None %}{{ item.rango_max|stringformat:'g' }}{% endif %}"
+                    onclick="seleccionarSensor('{{ sensor.tipo }}')"
+                >
+                    <div class="sensor-tile-head">
+                        <span class="sensor-tile-name">{{ sensor.get_tipo_display }}</span>
+                        <span id="estado-{{ sensor.tipo }}" class="status status-off" style="padding:0.16rem 0.42rem;font-size:0.65rem;">Esperando</span>
                     </div>
-                    <div class="stat-note">Tendencia: <span id="diag-tendencia">{{ resumen.tendencia }}</span></div>
+                    <div class="d-flex align-items-baseline justify-content-between gap-2">
+                        <div class="d-flex align-items-baseline gap-1">
+                            <span id="valor-{{ sensor.tipo }}" class="sensor-tile-val">&mdash;</span>
+                            <span id="unidad-{{ sensor.tipo }}" class="metric-unit">{{ sensor.get_unidad }}</span>
+                        </div>
+                        {% if item.rango_min is not None or item.rango_max is not None %}
+                        <span class="t-muted num" style="font-size:0.68rem;">
+                            {{ item.rango_min|floatformat:"-1" }}&ndash;{{ item.rango_max|floatformat:"-1" }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="sensor-tile-foot">
+                        <span id="ultima-{{ sensor.tipo }}" class="num">Última com.: &mdash;</span>
+                    </div>
+                </button>
+                {% endwith %}
+                {% empty %}
+                <div class="notice" style="grid-column: 1 / -1;">
+                    Esta instalación no tiene sensores activos configurados. Puedes activarlos desde
+                    <a href="{% url 'editar_instalacion' instalacion.pk %}">Configuración</a>.
                 </div>
-                <div class="col-12 col-md-5">
-                    <div class="stat-label mb-1">Recomendaciones prácticas</div>
-                    <ul id="diag-recs" class="rec-list">
+                {% endfor %}
+            </div>
+
+            <!-- Gráfico principal enfocado (cambia al hacer clic en cualquier tarjeta o píldora) -->
+            {% if sensores %}
+            <div class="panel chart-panel">
+                <div class="panel-head py-2 px-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <h2 id="chart-titulo-activo" class="panel-title">Tendencia en vivo</h2>
+                        <span id="chart-rango-activo" class="tag num" style="font-size:0.7rem;">Objetivo: &mdash;</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="chart-pills" id="chart-selector-pills">
+                            {% for sensor in sensores %}
+                            <button
+                                type="button"
+                                class="chart-pill {% if forloop.first %}active{% endif %}"
+                                data-sensor-pill="{{ sensor.tipo }}"
+                                onclick="seleccionarSensor('{{ sensor.tipo }}')"
+                            >
+                                {{ sensor.info_catalogo.nombre|default:sensor.get_tipo_display|truncatechars:14 }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <button type="button" id="btn-ver-todos" class="btn btn-ghost btn-sm" style="padding:0.18rem 0.5rem;font-size:0.72rem;" title="Mostrar o ocultar todos los gráficos en miniatura">
+                            Todos
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="chart-principal"></canvas>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ZONA DERECHA: Consola de Auditoría por pestañas (sin scroll de página) -->
+        <div class="panel audit-panel">
+            <div class="audit-tabs" role="tablist" aria-label="Consola de auditoría">
+                <button type="button" class="audit-tab-btn active" data-audit-tab="lecturas" onclick="activarAuditTab('lecturas')">
+                    <i class="bi bi-list-ul"></i>Lecturas
+                </button>
+                <button type="button" class="audit-tab-btn" data-audit-tab="alertas" onclick="activarAuditTab('alertas')">
+                    <i class="bi bi-bell"></i>Alertas
+                    <span id="tab-alertas-count" class="tag num" style="padding:0.05rem 0.38rem;font-size:0.66rem;">{{ total_alertas_activas }}</span>
+                </button>
+                <button type="button" class="audit-tab-btn" data-audit-tab="reglas" onclick="activarAuditTab('reglas')">
+                    <i class="bi bi-sliders2"></i>Reglas
+                    <span class="tag num" style="padding:0.05rem 0.38rem;font-size:0.66rem;">{{ reglas|length }}</span>
+                </button>
+                <button type="button" class="audit-tab-btn" data-audit-tab="diagnostico" onclick="activarAuditTab('diagnostico')">
+                    <i class="bi bi-clipboard2-pulse"></i>Diagnóstico
+                </button>
+            </div>
+
+            <div class="audit-body">
+                <!-- TAB 1: Últimas mediciones -->
+                <div id="audit-pane-lecturas" class="audit-pane active">
+                    <table class="tbl tbl-compact num">
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Sensor</th>
+                                <th>Valor</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla">
+                            <tr>
+                                <td colspan="4" class="empty py-4">Esperando datos del simulador IoT...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- TAB 2: Alertas activas en vivo -->
+                <div id="audit-pane-alertas" class="audit-pane">
+                    <div id="cockpit-alertas-lista">
+                        {% for alerta in alertas_activas %}
+                        <div class="alert-feed-item">
+                            <div>
+                                {% if 'ROJA' in alerta.mensaje or 'ALTA' in alerta.mensaje %}
+                                    <span class="sev sev-high"></span>
+                                {% else %}
+                                    <span class="sev sev-low"></span>
+                                {% endif %}
+                                <span>{{ alerta.mensaje }}</span>
+                            </div>
+                            <span class="t-muted num" style="white-space:nowrap;">{{ alerta.fecha_generacion|date:"H:i:s" }}</span>
+                        </div>
+                        {% empty %}
+                        <div class="text-center t-muted py-5" style="font-size:0.82rem;">
+                            <i class="bi bi-check-circle me-1 t-accent"></i>Sin alertas activas sin leer en este momento.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- TAB 3: Reglas de alerta -->
+                <div id="audit-pane-reglas" class="audit-pane">
+                    <table class="tbl tbl-compact">
+                        <thead>
+                            <tr>
+                                <th>Sensor</th>
+                                <th>Mín / Máx</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for regla in reglas %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold" style="font-size:0.8rem;">{{ regla.sensor.get_tipo_display }}</div>
+                                    {% if regla.sensor.planta %}
+                                    <div class="t-muted" style="font-size:0.7rem;">Planta {{ regla.sensor.planta.codigo }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="num" style="font-size:0.76rem;">
+                                    {% if regla.limite_minimo is not None %}<span class="limit-lo">&lt;{{ regla.limite_minimo }}</span>{% else %}<span class="t-muted">&mdash;</span>{% endif %}
+                                    /
+                                    {% if regla.limite_maximo is not None %}<span class="limit-hi">&gt;{{ regla.limite_maximo }}</span>{% else %}<span class="t-muted">&mdash;</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if regla.activa %}
+                                        <span class="status status-ok" style="font-size:0.65rem;">Activa</span>
+                                    {% else %}
+                                        <span class="status status-off" style="font-size:0.65rem;">Inactiva</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end" style="white-space:nowrap;">
+                                    {% if perms.telemetria.change_reglaalerta %}
+                                    <a href="{% url 'editar_regla' regla.id %}" class="btn btn-ghost btn-sm" style="padding:0.15rem 0.42rem;" title="Editar regla"><i class="bi bi-pencil me-0"></i></a>
+                                    {% endif %}
+                                    {% if perms.telemetria.delete_reglaalerta %}
+                                    <a href="{% url 'eliminar_regla' regla.id %}" class="btn btn-ghost-danger btn-sm" style="padding:0.15rem 0.42rem;" title="Eliminar regla"><i class="bi bi-trash3 me-0"></i></a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="empty py-4">Sin reglas configuradas.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- TAB 4: Diagnóstico y resumen rápido de plantas -->
+                <div id="audit-pane-diagnostico" class="audit-pane p-3">
+                    <div class="stat-label mb-2">Recomendaciones automáticas</div>
+                    <ul id="diag-recs" class="rec-list mb-3">
                         {% for rec in resumen.recomendaciones %}
                         <li>{{ rec }}</li>
                         {% endfor %}
                     </ul>
+
+                    <div class="stat-label mb-1">Plantas activas ({{ num_plantas }})</div>
+                    <div class="panel" style="background:var(--ap-surface-2);">
+                        {% for p in plantas_destacadas %}
+                        <div class="plant-mini-row">
+                            <div>
+                                <strong>{{ p.codigo }}</strong>
+                                <span class="t-muted">· {{ p.especie_nombre }} ({{ p.get_etapa_display }})</span>
+                            </div>
+                            <a href="{% url 'detalle_planta' instalacion.pk p.pk %}" class="t-accent num" style="font-size:0.75rem;">
+                                {% if p.dias_para_cosecha == 0 %}Lista{% else %}{{ p.dias_para_cosecha }}d{% endif %}
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </div>
+                        {% empty %}
+                        <div class="p-3 t-muted text-center" style="font-size:0.78rem;">Aún no hay plantas activas registradas.</div>
+                        {% endfor %}
+                    </div>
                 </div>
-                <div class="col-12 col-md-3 text-md-end">
-                    <div class="stat-label mb-1">Plantas en este sistema</div>
-                    <div class="fw-semibold num mb-2" style="font-size:1.15rem;">{{ num_plantas }} registrada(s)</div>
-                    <a href="{% url 'lista_plantas' instalacion.pk %}" class="btn btn-ghost btn-sm">
-                        <i class="bi bi-flower1"></i>Ver plantas y sensores
-                    </a>
+            </div>
+
+            <div class="audit-foot">
+                <a href="{% url 'historial_instalacion' instalacion.pk %}" class="t-muted">
+                    <i class="bi bi-clock-history me-1"></i>Historial completo
+                </a>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'alertas_instalacion' instalacion.pk %}" class="t-muted">Centro de alertas</a>
+                    {% if perms.telemetria.add_reglaalerta %}
+                    <a href="{% url 'crear_regla' instalacion.pk %}" class="t-accent fw-semibold">+ Nueva regla</a>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Valores actuales (una tarjeta por sensor) -->
-    <div class="row g-3 mb-4" id="tarjetas-sensores">
+    <!-- Cajón opcional bajo demanda: todos los gráficos juntos -->
+    {% if sensores %}
+    <div id="drawer-todos-graficos" class="row g-3 mt-2 d-none">
         {% for sensor in sensores %}
-        <div class="col-6 col-md-4 col-xl-3">
-            <div class="panel stat">
-                <div class="metric-label">{{ sensor.get_tipo_display }}</div>
-                <div class="d-flex align-items-baseline gap-2 mt-2">
-                    <div id="valor-{{ sensor.tipo }}" class="metric-value">&mdash;</div>
-                    <span id="unidad-{{ sensor.tipo }}" class="metric-unit">{{ sensor.get_unidad }}</span>
-                </div>
-                <span id="estado-{{ sensor.tipo }}" class="status status-off mt-2">Esperando</span>
-                <div id="ultima-{{ sensor.tipo }}" class="t-muted num mt-2" style="font-size:0.74rem;">Última com.: &mdash;</div>
-            </div>
-        </div>
-        {% empty %}
-        <div class="col-12">
-            <div class="notice">
-                Esta instalación no tiene sensores activos configurados. Puedes activarlos desde
-                <a href="{% url 'editar_instalacion' instalacion.pk %}">Editar instalación</a>.
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <!-- Gráficos en tiempo real (uno por sensor) -->
-    <div class="row g-3 mb-4">
-        {% for sensor in sensores %}
-        <div class="col-12 col-lg-6">
+        <div class="col-12 col-md-6 col-xl-4">
             <div class="panel">
-                <div class="panel-head">
-                    <h2 class="panel-title">{{ sensor.get_tipo_display }}</h2>
-                    <span class="status status-ok">En vivo</span>
+                <div class="panel-head py-2 px-3">
+                    <h2 class="panel-title" style="font-size:0.82rem;">{{ sensor.get_tipo_display }}</h2>
+                    <span class="status status-ok" style="font-size:0.65rem;">En vivo</span>
                 </div>
-                <div class="panel-body">
-                    <canvas id="chart-{{ sensor.tipo }}" height="140"></canvas>
+                <div class="panel-body p-2">
+                    <canvas id="mini-chart-{{ sensor.tipo }}" height="110"></canvas>
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
-
-    <!-- Tabla compacta de últimas mediciones -->
-    <div class="panel mb-4">
-        <div class="panel-head py-2">
-            <div>
-                <h2 class="panel-title">Últimas mediciones</h2>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <a href="{% url 'historial_instalacion' instalacion.pk %}" class="btn btn-link-ap btn-sm" style="font-size:0.78rem;">Ver historial completo</a>
-                <span class="status status-ok">En vivo</span>
-            </div>
-        </div>
-        <div class="table-responsive live-table-scroll">
-            <table class="tbl tbl-compact num">
-                <thead>
-                    <tr>
-                        <th>Hora</th>
-                        <th>Sensor</th>
-                        <th>Valor</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody id="cuerpo-tabla">
-                    <tr>
-                        <td colspan="4" class="empty py-3">Esperando datos del simulador IoT...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Gestión de reglas de alerta (CRUD) -->
-    <div class="panel">
-        <div class="panel-head">
-            <div>
-                <h2 class="panel-title">Reglas de alerta de esta instalación</h2>
-                <p class="panel-sub">Umbrales automáticos de disparo de alertas para los sensores.</p>
-            </div>
-            {% if perms.telemetria.add_reglaalerta %}
-            <a href="{% url 'crear_regla' instalacion.pk %}" class="btn btn-primary-ap btn-sm">
-                <i class="bi bi-plus-lg"></i>Nueva regla de alerta
-            </a>
-            {% endif %}
-        </div>
-        <div class="table-responsive">
-            <table class="tbl">
-                <thead>
-                    <tr>
-                        <th>Sensor</th>
-                        <th>Límite mínimo (alerta azul)</th>
-                        <th>Límite máximo (alerta roja)</th>
-                        <th>Estado</th>
-                        <th class="text-end">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for regla in reglas %}
-                    <tr>
-                        <td>
-                            <strong>{{ regla.sensor.get_tipo_display }}</strong>
-                            <div class="t-muted" style="font-size:0.76rem;">{{ regla.sensor.modelo_hardware }}</div>
-                        </td>
-                        <td class="num">
-                            {% if regla.limite_minimo is not None %}
-                                <span class="limit-lo">&lt; {{ regla.limite_minimo }} {{ regla.sensor.get_unidad }}</span>
-                            {% else %}
-                                <span class="t-muted">Sin mínimo</span>
-                            {% endif %}
-                        </td>
-                        <td class="num">
-                            {% if regla.limite_maximo is not None %}
-                                <span class="limit-hi">&gt; {{ regla.limite_maximo }} {{ regla.sensor.get_unidad }}</span>
-                            {% else %}
-                                <span class="t-muted">Sin máximo</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if regla.activa %}
-                                <span class="status status-ok">Activa</span>
-                            {% else %}
-                                <span class="status status-off">Inactiva</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-end" style="white-space:nowrap;">
-                            {% if perms.telemetria.change_reglaalerta %}
-                            <a href="{% url 'editar_regla' regla.id %}" class="btn btn-ghost btn-sm me-1"><i class="bi bi-pencil"></i>Editar</a>
-                            {% endif %}
-                            {% if perms.telemetria.delete_reglaalerta %}
-                            <a href="{% url 'eliminar_regla' regla.id %}" class="btn btn-ghost-danger btn-sm"><i class="bi bi-trash3"></i>Eliminar</a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="empty">
-                            No hay reglas de alerta configuradas para esta instalación.
-                            {% if perms.telemetria.add_reglaalerta %}
-                            <br>
-                            <a href="{% url 'crear_regla' instalacion.pk %}" class="btn btn-ghost btn-sm mt-2"><i class="bi bi-plus-lg"></i>Crear la primera regla</a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+    {% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-// ══════════════════════════════════════════════════════════
-//  CONFIGURACIÓN
-// ══════════════════════════════════════════════════════════
-const URL_LIVE   = "{% url 'api_telemetria_live' instalacion.pk %}";
-const INTERVALO  = 5000;  // ms entre cada petición al servidor
-const MAX_PUNTOS = 20;    // máximo de puntos en el gráfico
+const URL_LIVE  = "{% url 'api_telemetria_live' instalacion.pk %}";
+const INTERVALO = 5000;
 
-// Paleta contenida por tipo de sensor
+function escHtml(txt) {
+    return String(txt ?? '').replace(/[&<>"']/g, ch => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+    ));
+}
+
 const COLORES = {
-    temperatura_agua : { borde: '#4aa3b5', fondo: 'rgba(74,163,181,0.08)' },
-    temperatura_aire : { borde: '#d28a5a', fondo: 'rgba(210,138,90,0.08)' },
-    temperatura      : { borde: '#d28a5a', fondo: 'rgba(210,138,90,0.08)' },
-    humedad          : { borde: '#5b8fd0', fondo: 'rgba(91,143,208,0.08)' },
-    ph               : { borde: '#9a7bc4', fondo: 'rgba(154,123,196,0.08)' },
-    caudal           : { borde: '#4fa38f', fondo: 'rgba(79,163,143,0.08)' },
-    nivel_estanque   : { borde: '#6f7fcf', fondo: 'rgba(111,127,207,0.08)' },
-    co2              : { borde: '#8b95a5', fondo: 'rgba(139,149,165,0.08)' },
-    fotoperiodo      : { borde: '#c9a43b', fondo: 'rgba(201,164,59,0.08)' },
+    temperatura_agua : { borde: '#4aa3b5', fondo: 'rgba(74,163,181,0.10)' },
+    temperatura_aire : { borde: '#d28a5a', fondo: 'rgba(210,138,90,0.10)' },
+    temperatura      : { borde: '#d28a5a', fondo: 'rgba(210,138,90,0.10)' },
+    humedad          : { borde: '#5b8fd0', fondo: 'rgba(91,143,208,0.10)' },
+    ph               : { borde: '#9a7bc4', fondo: 'rgba(154,123,196,0.10)' },
+    caudal           : { borde: '#4fa38f', fondo: 'rgba(79,163,143,0.10)' },
+    nivel_estanque   : { borde: '#6f7fcf', fondo: 'rgba(111,127,207,0.10)' },
+    co2              : { borde: '#8b95a5', fondo: 'rgba(139,149,165,0.10)' },
+    fotoperiodo      : { borde: '#c9a43b', fondo: 'rgba(201,164,59,0.10)' },
 };
 
 const ETIQUETAS = {
-    temperatura_agua : 'Temperatura del agua',
-    temperatura_aire : 'Temperatura del aire',
-    temperatura      : 'Temperatura general',
+    temperatura_agua : 'Temp. agua',
+    temperatura_aire : 'Temp. aire',
+    temperatura      : 'Temperatura',
     humedad          : 'Humedad',
     ph               : 'pH',
     caudal           : 'Caudal',
-    nivel_estanque   : 'Nivel del estanque',
+    nivel_estanque   : 'Estanque',
     co2              : 'CO2',
     fotoperiodo      : 'Fotoperiodo',
 };
 
-// Mapa de gráficos Chart.js  { tipo: Chart }
-const graficos = {};
+// Metadatos y caché en vivo de cada sensor
+const sensorMeta = {};
+document.querySelectorAll('.sensor-tile[data-sensor]').forEach(tile => {
+    const tipo = tile.dataset.sensor;
+    sensorMeta[tipo] = {
+        label: tile.dataset.label || tipo,
+        unit: tile.dataset.unit || '',
+        min: tile.dataset.min !== '' ? parseFloat(tile.dataset.min) : null,
+        max: tile.dataset.max !== '' ? parseFloat(tile.dataset.max) : null,
+    };
+});
 
-// ══════════════════════════════════════════════════════════
-//  INICIALIZACIÓN DE GRÁFICOS
-// ══════════════════════════════════════════════════════════
-function crearGrafico(tipo) {
-    const canvas = document.getElementById(`chart-${tipo}`);
-    if (!canvas) return null;
+let sensorActivo = Object.keys(sensorMeta)[0] || null;
+let datosSensoresCache = {};
+let enPausa = false;
 
-    const col = COLORES[tipo] || { borde: '#34a37c', fondo: 'rgba(52,163,124,0.08)' };
+// Plugin Chart.js para dibujar líneas guía de rango mínimo/máximo
+const pluginLimites = {
+    id: 'limitesObjetivo',
+    afterDatasetsDraw(chart) {
+        const meta = sensorMeta[sensorActivo];
+        if (!meta) return;
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea || !scales.y) return;
 
-    return new Chart(canvas.getContext('2d'), {
+        const dibujarLinea = (valor, color, etiqueta) => {
+            if (valor === null || Number.isNaN(valor)) return;
+            const y = scales.y.getPixelForValue(valor);
+            if (y < chartArea.top - 4 || y > chartArea.bottom + 4) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.setLineDash([5, 4]);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.1;
+            ctx.moveTo(chartArea.left, y);
+            ctx.lineTo(chartArea.right, y);
+            ctx.stroke();
+            ctx.fillStyle = color;
+            ctx.font = '10px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(etiqueta, chartArea.right - 4, Math.max(chartArea.top + 10, y - 4));
+            ctx.restore();
+        };
+
+        dibujarLinea(meta.max, 'rgba(224, 128, 122, 0.72)', `Máx ${meta.max}`);
+        dibujarLinea(meta.min, 'rgba(127, 176, 226, 0.72)', `Mín ${meta.min}`);
+    }
+};
+
+// Gráfico principal enfocado
+let chartPrincipal = null;
+const canvasPrincipal = document.getElementById('chart-principal');
+if (canvasPrincipal) {
+    chartPrincipal = new Chart(canvasPrincipal.getContext('2d'), {
         type: 'line',
         data: {
             labels: [],
             datasets: [{
-                label: tipo,
+                label: '',
                 data: [],
-                borderColor      : col.borde,
-                backgroundColor  : col.fondo,
-                borderWidth      : 1.75,
-                pointRadius      : 2,
-                pointBackgroundColor: col.borde,
-                fill             : true,
-                tension          : 0.3,
+                borderColor: '#34a37c',
+                backgroundColor: 'rgba(52,163,124,0.10)',
+                borderWidth: 2,
+                pointRadius: 2.5,
+                pointHoverRadius: 4,
+                fill: true,
+                tension: 0.3,
             }]
         },
         options: {
-            animation    : { duration: 300 },
-            responsive   : true,
-            color        : '#8b95a5',
+            animation: { duration: 220 },
+            responsive: true,
+            maintainAspectRatio: false,
+            color: '#8b95a5',
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: ctx => ` ${ctx.parsed.y}`
+                        label: ctx => {
+                            const u = (sensorMeta[sensorActivo] && sensorMeta[sensorActivo].unit) || '';
+                            return ` ${ctx.parsed.y} ${u}`.trim();
+                        }
                     }
                 }
             },
             scales: {
-                x: {
-                    grid : { color: '#1c222c' },
-                    ticks: { color: '#8b95a5', maxTicksLimit: 8, maxRotation: 0 }
-                },
-                y: {
-                    beginAtZero: false,
-                    grid : { color: '#1c222c' },
-                    ticks: { color: '#8b95a5' }
-                }
+                x: { grid: { color: '#1c222c' }, ticks: { color: '#8b95a5', maxTicksLimit: 7, maxRotation: 0 } },
+                y: { beginAtZero: false, grid: { color: '#1c222c' }, ticks: { color: '#8b95a5' } }
             }
-        }
+        },
+        plugins: [pluginLimites]
     });
 }
 
-// Crear un gráfico por cada sensor que tenga canvas en el DOM
-document.querySelectorAll('canvas[id^="chart-"]').forEach(canvas => {
-    const tipo = canvas.id.replace('chart-', '');
-    graficos[tipo] = crearGrafico(tipo);
-});
+// Mini gráficos opcionales bajo demanda
+const miniGraficos = {};
+function inicializarMiniGraficos() {
+    document.querySelectorAll('canvas[id^="mini-chart-"]').forEach(canvas => {
+        const tipo = canvas.id.replace('mini-chart-', '');
+        if (miniGraficos[tipo]) return;
+        const col = COLORES[tipo] || { borde: '#34a37c', fondo: 'rgba(52,163,124,0.10)' };
+        miniGraficos[tipo] = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    borderColor: col.borde,
+                    backgroundColor: col.fondo,
+                    borderWidth: 1.6,
+                    pointRadius: 1.5,
+                    fill: true,
+                    tension: 0.3,
+                }]
+            },
+            options: {
+                animation: false,
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#1c222c' }, ticks: { color: '#8b95a5', maxTicksLimit: 5, maxRotation: 0 } },
+                    y: { beginAtZero: false, grid: { color: '#1c222c' }, ticks: { color: '#8b95a5' } }
+                }
+            }
+        });
+    });
+}
 
-// ══════════════════════════════════════════════════════════
-//  ACTUALIZACIÓN EN VIVO
-// ══════════════════════════════════════════════════════════
-function actualizarGrafico(tipo, mediciones) {
-    const chart = graficos[tipo];
-    if (!chart || !mediciones.length) return;
+function renderizarChartPrincipal() {
+    if (!chartPrincipal || !sensorActivo) return;
+    const meta = sensorMeta[sensorActivo] || { label: sensorActivo, unit: '', min: null, max: null };
+    const col = COLORES[sensorActivo] || { borde: '#34a37c', fondo: 'rgba(52,163,124,0.10)' };
+    const meds = (datosSensoresCache[sensorActivo] && datosSensoresCache[sensorActivo].mediciones) || [];
 
-    // Reemplazar todos los puntos (el backend ya los ordena por timestamp ASC)
-    chart.data.labels   = mediciones.map(m => m.timestamp);
-    chart.data.datasets[0].data = mediciones.map(m => m.valor);
-    chart.update('none');   // sin animación para suavizar
+    const elTitulo = document.getElementById('chart-titulo-activo');
+    if (elTitulo) elTitulo.textContent = meta.label;
+
+    const elRango = document.getElementById('chart-rango-activo');
+    if (elRango) {
+        if (meta.min !== null && meta.max !== null) {
+            elRango.textContent = `Objetivo: ${meta.min}–${meta.max} ${meta.unit}`.trim();
+        } else {
+            elRango.textContent = 'Sin rango definido';
+        }
+    }
+
+    chartPrincipal.data.labels = meds.map(m => m.timestamp);
+    chartPrincipal.data.datasets[0].data = meds.map(m => m.valor);
+    chartPrincipal.data.datasets[0].borderColor = col.borde;
+    chartPrincipal.data.datasets[0].backgroundColor = col.fondo;
+    chartPrincipal.data.datasets[0].pointBackgroundColor = col.borde;
+    chartPrincipal.update('none');
+}
+
+function seleccionarSensor(tipo) {
+    sensorActivo = tipo;
+    document.querySelectorAll('.sensor-tile[data-sensor]').forEach(el => {
+        el.classList.toggle('active', el.dataset.sensor === tipo);
+    });
+    document.querySelectorAll('[data-sensor-pill]').forEach(el => {
+        el.classList.toggle('active', el.dataset.sensorPill === tipo);
+    });
+    renderizarChartPrincipal();
+}
+
+function activarAuditTab(nombre) {
+    document.querySelectorAll('[data-audit-tab]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.auditTab === nombre);
+    });
+    document.querySelectorAll('.audit-pane').forEach(pane => {
+        pane.classList.toggle('active', pane.id === `audit-pane-${nombre}`);
+    });
 }
 
 function actualizarTarjeta(tipo, mediciones) {
     if (!mediciones.length) return;
     const ultima = mediciones[mediciones.length - 1];
+    const meta = sensorMeta[tipo];
 
     const elValor  = document.getElementById(`valor-${tipo}`);
     const elEstado = document.getElementById(`estado-${tipo}`);
     const elUltima = document.getElementById(`ultima-${tipo}`);
+    const tile     = document.querySelector(`.sensor-tile[data-sensor="${tipo}"]`);
     if (!elValor) return;
 
     elValor.textContent = ultima.valor;
@@ -313,85 +791,107 @@ function actualizarTarjeta(tipo, mediciones) {
         elUltima.textContent = `Última com.: ${ultima.timestamp}`;
     }
 
+    const fueraRango = ultima.estado_conexion && meta && (
+        (meta.min !== null && ultima.valor < meta.min) ||
+        (meta.max !== null && ultima.valor > meta.max)
+    );
+    if (tile) tile.classList.toggle('tile-out', Boolean(fueraRango || !ultima.estado_conexion));
+
     if (elEstado) {
-        if (ultima.estado_conexion) {
-            elEstado.className = 'status status-ok mt-2';
-            elEstado.textContent = 'Conectado';
-        } else {
-            elEstado.className = 'status status-err mt-2';
+        if (!ultima.estado_conexion) {
+            elEstado.className = 'status status-err';
             elEstado.textContent = 'Fallo';
+        } else if (fueraRango) {
+            elEstado.className = 'status status-err';
+            elEstado.textContent = 'Fuera';
+        } else {
+            elEstado.className = 'status status-ok';
+            elEstado.textContent = 'OK';
         }
     }
 }
 
 function actualizarTabla(sensoresDatos) {
-    // Aplanar todas las mediciones con tipo de sensor
     const filas = [];
     for (const [tipo, datos] of Object.entries(sensoresDatos)) {
         datos.mediciones.forEach(m => filas.push({ tipo, ...m }));
     }
-    // Ordenar por fecha/hora ISO descendente (fallback a HH:MM:SS)
     filas.sort((a, b) => (b.timestamp_iso || b.timestamp).localeCompare(a.timestamp_iso || a.timestamp));
 
     const tbody = document.getElementById('cuerpo-tabla');
-    if (!tbody) return;
+    if (!tbody || !filas.length) return;
 
-    tbody.innerHTML = filas.slice(0, 10).map((f, i) => `
-        <tr class="${i === 0 ? 'row-nueva' : ''}">
+    tbody.innerHTML = filas.slice(0, 12).map((f, i) => `
+        <tr class="${i === 0 ? 'row-nueva' : ''}" style="cursor:pointer;" onclick="seleccionarSensor('${f.tipo}')">
             <td class="t-muted">${f.timestamp}</td>
             <td>${ETIQUETAS[f.tipo] ?? f.tipo}</td>
             <td><strong style="color:${COLORES[f.tipo]?.borde ?? '#e6e9ee'}">${f.valor}</strong></td>
             <td>
                 ${f.estado_conexion
-                    ? '<span class="status status-ok">Conectado</span>'
-                    : '<span class="status status-err">Fallo</span>'}
+                    ? '<span class="status status-ok" style="font-size:0.65rem;">OK</span>'
+                    : '<span class="status status-err" style="font-size:0.65rem;">Fallo</span>'}
             </td>
         </tr>`).join('');
 }
 
 function actualizarAlertas(alertas, numAlertas) {
     const badge = document.getElementById('badge-alertas');
-    const lista  = document.getElementById('lista-alertas');
-    if (!badge || !lista) return;
+    const tabCount = document.getElementById('tab-alertas-count');
+    const lista = document.getElementById('cockpit-alertas-lista');
 
-    if (numAlertas > 0) {
-        badge.textContent = numAlertas;
-        badge.classList.remove('d-none');
-    } else {
-        badge.classList.add('d-none');
+    if (badge) {
+        badge.textContent = `${numAlertas} activa(s)`;
+        badge.className = numAlertas > 0 ? 'status status-err' : 'status status-ok';
+    }
+    if (tabCount) tabCount.textContent = numAlertas;
+
+    if (!lista) return;
+    if (!alertas.length) {
+        lista.innerHTML = (
+            '<div class="text-center t-muted py-5" style="font-size:0.82rem;">'
+            + '<i class="bi bi-check-circle me-1 t-accent"></i>Sin alertas activas sin leer en este momento.'
+            + '</div>'
+        );
+        return;
     }
 
-    const cabecera = '<li><h6 class="dropdown-header">Alertas de sensores</h6></li>';
-    const items = alertas.length
-        ? alertas.map(a => {
-            const esRoja = a.mensaje.includes('ROJA') || a.mensaje.includes('ALTA');
-            const sev    = esRoja ? 'sev-high' : 'sev-low';
-            return `<li>
-                <a class="dropdown-item" href="#">
-                    <span class="sev ${sev}"></span><strong>${a.mensaje}</strong>
-                    <br><small class="t-muted num" style="padding-left:1.05rem;">${a.hora}</small>
-                </a></li>`;
-          }).join('')
-        : '<li><span class="dropdown-item-text t-muted">Sin alertas activas.</span></li>';
-
-    lista.innerHTML = cabecera + items;
+    lista.innerHTML = alertas.map(a => {
+        const esRoja = a.mensaje.includes('ROJA') || a.mensaje.includes('ALTA');
+        const sev = esRoja ? 'sev-high' : 'sev-low';
+        return `<div class="alert-feed-item">
+            <div><span class="sev ${sev}"></span><span>${escHtml(a.mensaje)}</span></div>
+            <span class="t-muted num" style="white-space:nowrap;">${escHtml(a.hora)}</span>
+        </div>`;
+    }).join('');
 }
 
-// ══════════════════════════════════════════════════════════
-//  FETCH PRINCIPAL
-// ══════════════════════════════════════════════════════════
+function actualizarMiniGraficos() {
+    const drawer = document.getElementById('drawer-todos-graficos');
+    if (!drawer || drawer.classList.contains('d-none')) return;
+    for (const [tipo, datos] of Object.entries(datosSensoresCache)) {
+        const ch = miniGraficos[tipo];
+        if (!ch || !datos.mediciones.length) continue;
+        ch.data.labels = datos.mediciones.map(m => m.timestamp);
+        ch.data.datasets[0].data = datos.mediciones.map(m => m.valor);
+        ch.update('none');
+    }
+}
+
 async function fetchDatos() {
     try {
         const resp = await fetch(URL_LIVE, { credentials: 'same-origin' });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
 
-        for (const [tipo, datos] of Object.entries(data.sensores)) {
-            actualizarGrafico(tipo, datos.mediciones);
+        datosSensoresCache = data.sensores || {};
+        for (const [tipo, datos] of Object.entries(datosSensoresCache)) {
             actualizarTarjeta(tipo, datos.mediciones);
         }
-        actualizarTabla(data.sensores);
-        actualizarAlertas(data.alertas, data.num_alertas);
+        renderizarChartPrincipal();
+        actualizarMiniGraficos();
+        actualizarTabla(datosSensoresCache);
+        actualizarAlertas(data.alertas || [], data.num_alertas || 0);
+
         if (data.resumen) {
             const elEstado = document.getElementById('diag-estado');
             if (elEstado) {
@@ -402,30 +902,73 @@ async function fetchDatos() {
             if (elPct) elPct.textContent = data.resumen.porcentaje_en_rango !== null ? `${data.resumen.porcentaje_en_rango}%` : '—';
             const elTend = document.getElementById('diag-tendencia');
             if (elTend) elTend.textContent = data.resumen.tendencia;
+
+            const recs = data.resumen.recomendaciones || [];
+            const elHint = document.getElementById('diag-rec-principal');
+            if (elHint && recs.length) {
+                elHint.innerHTML = `<i class="bi bi-lightbulb me-1"></i>${escHtml(recs[0])}`;
+                elHint.title = recs[0];
+            }
             const elRecs = document.getElementById('diag-recs');
-            if (elRecs && data.resumen.recomendaciones) {
-                elRecs.innerHTML = data.resumen.recomendaciones.map(r => `<li>${r}</li>`).join('');
+            if (elRecs && recs.length) {
+                elRecs.innerHTML = recs.map(r => `<li>${escHtml(r)}</li>`).join('');
             }
         }
-
     } catch (err) {
         console.warn('Error al obtener datos en vivo:', err);
     }
 }
 
-// ══════════════════════════════════════════════════════════
-//  CONTADOR VISUAL DE PRÓXIMA ACTUALIZACIÓN
-// ══════════════════════════════════════════════════════════
+// Botón "Todos" (muestra/oculta mini-gráficos bajo el cockpit)
+const btnVerTodos = document.getElementById('btn-ver-todos');
+if (btnVerTodos) {
+    btnVerTodos.addEventListener('click', () => {
+        const drawer = document.getElementById('drawer-todos-graficos');
+        if (!drawer) return;
+        const abrir = drawer.classList.contains('d-none');
+        drawer.classList.toggle('d-none', !abrir);
+        btnVerTodos.classList.toggle('active', abrir);
+        if (abrir) {
+            inicializarMiniGraficos();
+            actualizarMiniGraficos();
+        }
+    });
+}
+
 const elSeg = document.getElementById('segundos-restantes');
-let cuenta  = INTERVALO / 1000;
+let cuenta = INTERVALO / 1000;
+
+const btnToggleLive = document.getElementById('btn-toggle-live');
+if (btnToggleLive) {
+    btnToggleLive.addEventListener('click', () => {
+        enPausa = !enPausa;
+        btnToggleLive.innerHTML = enPausa
+            ? '<i class="bi bi-play-fill me-0"></i>'
+            : '<i class="bi bi-pause-fill me-0"></i>';
+        btnToggleLive.title = enPausa ? 'Reanudar refresco automático' : 'Pausar refresco automático';
+    });
+}
+
+const btnRefreshNow = document.getElementById('btn-refresh-now');
+if (btnRefreshNow) {
+    btnRefreshNow.addEventListener('click', () => {
+        cuenta = INTERVALO / 1000;
+        if (elSeg) elSeg.textContent = cuenta;
+        fetchDatos();
+    });
+}
+
 setInterval(() => {
+    if (enPausa) return;
     cuenta -= 1;
     if (elSeg) elSeg.textContent = cuenta > 0 ? cuenta : (INTERVALO / 1000);
     if (cuenta <= 0) cuenta = INTERVALO / 1000;
 }, 1000);
 
-// Primera carga inmediata + polling
+renderizarChartPrincipal();
 fetchDatos();
-setInterval(fetchDatos, INTERVALO);
+setInterval(() => {
+    if (!enPausa) fetchDatos();
+}, INTERVALO);
 </script>
 {% endblock %}
