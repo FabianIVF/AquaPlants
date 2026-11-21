@@ -1,13 +1,15 @@
 {% with sensor=a.regla.sensor %}
 <tr {% if not a.leida %}style="background:rgba(16,185,129,.03);"{% endif %}>
-    <td class="num t-muted" style="white-space:nowrap;">
+    <td data-label="Fecha" class="num t-muted" style="white-space:nowrap;">
         {{ a.fecha_generacion|date:"d/m/Y H:i:s" }}
     </td>
-    <td>
+    <td data-label="{% if mostrar_torre %}Origen{% else %}Sensor{% endif %}">
         {% if mostrar_torre %}
-        <div class="fw-semibold" style="font-size:0.8rem;">{{ sensor.instalacion.nombre }}</div>
-        <div class="t-muted" style="font-size:0.72rem;">
-            {% if sensor.planta %}{{ sensor.planta.codigo }} &middot; {% endif %}{{ sensor.get_tipo_display }}
+        <div class="text-end text-md-start">
+            <div class="fw-semibold" style="font-size:0.8rem;">{{ sensor.instalacion.nombre }}</div>
+            <div class="t-muted" style="font-size:0.72rem;">
+                {% if sensor.planta %}{{ sensor.planta.codigo }} &middot; {% endif %}{{ sensor.get_tipo_display }}
+            </div>
         </div>
         {% else %}
         <div class="fw-semibold" style="font-size:0.78rem;">
@@ -16,24 +18,24 @@
         </div>
         {% endif %}
     </td>
-    <td>
-        <div class="d-flex align-items-center">
+    <td data-label="Detalle" class="td-full">
+        <div class="d-flex align-items-start">
             {% if "ROJA" in a.mensaje or "ALTA" in a.mensaje %}
-                <span class="sev sev-high flex-shrink-0"></span>
+                <span class="sev sev-high flex-shrink-0 mt-1"></span>
             {% else %}
-                <span class="sev sev-low flex-shrink-0"></span>
+                <span class="sev sev-low flex-shrink-0 mt-1"></span>
             {% endif %}
             <span {% if not a.leida %}class="fw-semibold"{% endif %}>{{ a.mensaje }}</span>
         </div>
     </td>
-    <td>
+    <td data-label="Estado">
         {% if a.leida %}
             <span class="status status-off">Leída</span>
         {% else %}
             <span class="status status-err">Sin leer</span>
         {% endif %}
     </td>
-    <td class="text-end" style="white-space:nowrap;">
+    <td class="text-end td-actions" style="white-space:nowrap;">
         {% if sensor.planta %}
             <a href="{% url 'detalle_planta' sensor.instalacion.pk sensor.planta.pk %}" class="btn btn-ghost btn-sm me-1" title="Ir a la planta">
                 <i class="bi bi-flower1"></i>Ver

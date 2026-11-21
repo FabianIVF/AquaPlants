@@ -39,6 +39,7 @@
             --bs-link-color: var(--ap-accent);
         }
         * { box-sizing: border-box; }
+        html, body { overflow-x: clip; }
         body {
             background: var(--ap-bg);
             color: var(--ap-text);
@@ -407,10 +408,6 @@
             .cockpit-grid { grid-template-columns: 1fr; }
             .audit-body { max-height: 380px; }
         }
-        @media (max-width: 767.98px) {
-            .cockpit-hint { display: none; }
-            .sensor-matrix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
 
         /* Estado vacío unificado con icono y contexto */
         .empty-state {
@@ -499,27 +496,105 @@
         @media (max-width: 991.98px) {
             .yt-sidebar {
                 position: fixed; left: 0; top: 58px; z-index: 1040;
+                width: min(275px, 84vw);
                 transform: translateX(-100%); transition: transform .2s ease;
             }
             .yt-shell.mobile-open .yt-sidebar { transform: translateX(0); }
             .yt-shell.mobile-open .yt-backdrop {
                 display: block; position: fixed; inset: 58px 0 0 0; z-index: 1035;
-                background: rgba(0, 0, 0, 0.55);
+                background: rgba(0, 0, 0, 0.58);
             }
-            .yt-main { padding: 0.9rem 1rem; }
+            .yt-main { padding: 0.9rem 1rem 1.5rem; }
         }
 
+        /* Sistema táctil, tablas en tarjeta y antidesborde para teléfonos */
         @media (max-width: 767.98px) {
             .app-nav-left { gap: 0.65rem; }
             .app-brand img { height: 28px; }
-            .app-nav-link { padding: 0.3rem 0.5rem; font-size: 0.8rem; }
+            .cockpit-hint { display: none; }
+            .sensor-matrix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .audit-body { min-height: auto; max-height: none; overflow-y: visible; }
+            .chart-canvas-wrap { min-height: 220px; }
+
+            .cockpit-bar { padding: 0.75rem; gap: 0.7rem; }
+            .cockpit-kpis {
+                width: 100%; display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem 0.65rem;
+            }
+            .cockpit-kpi {
+                justify-content: space-between; padding: 0.3rem 0.5rem;
+                background: var(--ap-surface-2); border-radius: 6px;
+            }
             .cockpit-sep { display: none; }
-            .cockpit-scroll { max-height: none; }
+            .cockpit-controls { width: 100%; margin-left: 0; gap: 0.45rem; }
+            .cockpit-controls > form { width: 100%; gap: 0.45rem !important; }
+            .cockpit-controls .form-control-sm,
+            .cockpit-controls .form-select-sm {
+                width: 100% !important; min-height: 42px; font-size: 0.94rem !important;
+            }
+            .cockpit-scroll { max-height: none; overflow-y: visible; }
+
+            .btn { min-height: 42px; padding: 0.5rem 0.85rem; display: inline-flex; align-items: center; justify-content: center; }
+            .btn-sm { min-height: 38px; padding: 0.42rem 0.75rem; font-size: 0.83rem; display: inline-flex; align-items: center; justify-content: center; }
+            .cockpit-pill, .chart-pill, .audit-tab-btn {
+                min-height: 38px; padding: 0.42rem 0.72rem; font-size: 0.82rem;
+                display: inline-flex; align-items: center; justify-content: center;
+            }
+            .yt-item { min-height: 44px; padding: 0.62rem 0.85rem; font-size: 0.92rem; }
+            .form-control, .form-select { min-height: 44px; font-size: 1rem; }
+            .check-tile { min-height: 48px; padding: 0.72rem 0.85rem; }
+            .sensor-tile { padding: 0.75rem; }
+            .sensor-tile-foot { flex-wrap: wrap; }
+
+            /* Conversión de tablas densas a tarjetas apiladas legibles */
+            .tbl.tbl-mobile thead { display: none; }
+            .tbl.tbl-mobile tbody,
+            .tbl.tbl-mobile tr { display: block; width: 100%; }
+            .tbl.tbl-mobile tbody tr { padding: 0.75rem 0.85rem; border-bottom: 1px solid var(--ap-border); }
+            .tbl.tbl-mobile tbody tr:last-child { border-bottom: 0; }
+            .tbl.tbl-mobile tbody td {
+                display: flex; align-items: flex-start; justify-content: space-between;
+                gap: 0.75rem; border: 0; padding: 0.25rem 0;
+                white-space: normal !important; text-align: left !important;
+            }
+            .tbl.tbl-mobile tbody td[data-label]::before {
+                content: attr(data-label);
+                font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+                letter-spacing: 0.04em; color: var(--ap-muted); flex-shrink: 0; padding-top: 0.12rem;
+            }
+            .tbl.tbl-mobile tbody td.td-full { flex-direction: column; gap: 0.2rem; }
+            .tbl.tbl-mobile tbody td.td-actions {
+                justify-content: flex-start; flex-wrap: wrap; gap: 0.4rem;
+                padding-top: 0.55rem; margin-top: 0.3rem; border-top: 1px solid var(--ap-border);
+            }
+            .tbl.tbl-mobile tbody td.td-actions::before { display: none; }
+            .tbl.tbl-mobile tbody td.empty { display: block; text-align: center !important; padding: 1.5rem 0.75rem; }
+        }
+
+        /* Navbar de 2 filas en teléfonos (< 680px): sin texto apretado ni desbordes */
+        @media (max-width: 679.98px) {
+            .app-nav-inner { height: auto; flex-wrap: wrap; padding: 0.45rem 0; gap: 0.4rem; }
+            .app-nav-left { display: contents; }
+            .yt-toggle-btn { order: 1; width: 40px; height: 40px; }
+            .app-brand { order: 1; }
+            .app-brand img { height: 26px; }
+            .app-nav-right { order: 2; margin-left: auto; gap: 0.5rem; }
+            .app-user, .app-nav-logout-txt { display: none; }
+            .app-nav-links {
+                order: 3; width: 100%; display: flex; gap: 0.3rem;
+                border-top: 1px solid var(--ap-border); padding-top: 0.42rem; margin-top: 0.1rem;
+            }
+            .app-nav-link {
+                flex: 1; text-align: center; min-height: 38px;
+                display: inline-flex; align-items: center; justify-content: center;
+                padding: 0.35rem 0.4rem; font-size: 0.8rem;
+            }
+            .yt-sidebar { top: 96px; height: calc(100vh - 96px); }
+            .yt-shell.mobile-open .yt-backdrop { inset: 96px 0 0 0; }
         }
         @media (max-width: 576px) {
-            .wrap { padding: 0 1rem; }
-            .app-user, .app-nav-logout-txt { display: none; }
-            .app-nav-link i { margin-right: 0.15rem !important; }
+            .wrap { padding: 0 0.85rem; }
+            .yt-main { padding: 0.75rem 0.75rem 1.5rem; }
         }
     </style>
     {% block extra_head %}{% endblock %}

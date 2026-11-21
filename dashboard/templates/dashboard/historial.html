@@ -157,7 +157,7 @@
                 {% endif %}
             </div>
             <div class="table-responsive cockpit-scroll">
-                <table class="tbl tbl-compact num">
+                <table class="tbl tbl-compact tbl-mobile num">
                     <thead>
                         <tr>
                             <th>Fecha y hora</th>
@@ -170,15 +170,15 @@
                     <tbody>
                         {% for m in historico %}
                         <tr>
-                            <td class="t-muted">{{ m.timestamp|date:"d/m/Y H:i:s" }}</td>
-                            <td>
+                            <td data-label="Fecha" class="t-muted">{{ m.timestamp|date:"d/m/Y H:i:s" }}</td>
+                            <td data-label="Sensor">
                                 <span class="tag" style="font-size:0.68rem;">
                                     {% if m.sensor.planta %}{{ m.sensor.planta.codigo }} &middot; {% endif %}{{ m.sensor.get_tipo_display }}
                                 </span>
                             </td>
-                            <td><strong>{{ m.valor }}</strong></td>
-                            <td class="t-muted">{{ m.sensor.get_unidad }}</td>
-                            <td>
+                            <td data-label="Valor"><strong>{{ m.valor }}</strong></td>
+                            <td data-label="Unidad" class="t-muted">{{ m.sensor.get_unidad }}</td>
+                            <td data-label="Estado">
                                 {% if m.estado_conexion %}
                                     <span class="status status-ok" style="font-size:0.66rem;">Conectado</span>
                                 {% else %}

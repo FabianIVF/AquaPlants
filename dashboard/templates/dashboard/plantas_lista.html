@@ -38,8 +38,15 @@
     .planta-stat .num { font-size: 0.86rem; font-weight: 600; }
     .planta-stat-sub { font-size: 0.66rem; color: var(--ap-muted); }
 
+    .planta-actions { min-width: 142px; }
+
     @media (max-width: 991.98px) {
-        .planta-row { grid-template-columns: 1fr; gap: 0.6rem; }
+        .planta-row { grid-template-columns: 1fr; gap: 0.65rem; }
+        .planta-actions { min-width: 0; width: 100%; padding-top: 0.35rem; border-top: 1px solid var(--ap-border); }
+    }
+    @media (max-width: 575.98px) {
+        .planta-stat { padding: 0.35rem 0.25rem; }
+        .planta-stat .num { font-size: 0.82rem; }
     }
 </style>
 {% endblock %}
@@ -182,8 +189,8 @@
                 </div>
 
                 <!-- Acciones rápidas -->
-                <div class="d-flex flex-row flex-lg-column gap-1 justify-content-end" style="min-width:142px;">
-                    <a href="{% url 'detalle_planta' instalacion.pk p.pk %}" class="btn btn-primary-ap btn-sm">
+                <div class="planta-actions d-flex flex-row flex-lg-column gap-2 justify-content-end">
+                    <a href="{% url 'detalle_planta' instalacion.pk p.pk %}" class="btn btn-primary-ap btn-sm flex-grow-1">
                         <i class="bi bi-activity"></i>Telemetría
                     </a>
                     {% if perms.telemetria.change_planta or perms.telemetria.delete_planta %}

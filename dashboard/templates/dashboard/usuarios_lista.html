@@ -64,7 +64,7 @@
             <span id="usuarios-visibles" class="tag num">{{ filas|length }} visible(s)</span>
         </div>
         <div class="table-responsive cockpit-scroll">
-            <table class="tbl tbl-compact">
+            <table class="tbl tbl-compact tbl-mobile">
                 <thead>
                     <tr>
                         <th>Usuario</th>
@@ -82,12 +82,14 @@
                         data-rol="{% if f.rol == 'Administrador' or f.obj.is_superuser %}admin{% elif f.rol == 'Encargado de cultivo' %}encargado{% elif f.rol == 'Supervisor' %}supervisor{% else %}otro{% endif %}"
                         data-texto="{{ f.obj.username|lower }} {{ f.obj.get_full_name|lower }} {{ f.obj.email|lower }} {{ f.rol|lower }} {% for inst in f.instalaciones %}{{ inst.nombre|lower }} {% endfor %}"
                     >
-                        <td>
-                            <strong>{{ f.obj.username }}</strong>
-                            {% if f.obj.email %}<div class="t-muted" style="font-size:0.72rem;">{{ f.obj.email }}</div>{% endif %}
+                        <td data-label="Usuario">
+                            <div class="text-end text-md-start">
+                                <strong>{{ f.obj.username }}</strong>
+                                {% if f.obj.email %}<div class="t-muted" style="font-size:0.72rem;">{{ f.obj.email }}</div>{% endif %}
+                            </div>
                         </td>
-                        <td>{{ f.obj.get_full_name|default:"—" }}</td>
-                        <td>
+                        <td data-label="Nombre">{{ f.obj.get_full_name|default:"—" }}</td>
+                        <td data-label="Rol">
                             {% if f.rol == 'Administrador' or f.obj.is_superuser %}
                                 <span class="status status-warn" style="font-size:0.68rem;">{{ f.rol }}</span>
                             {% elif f.rol == 'Encargado de cultivo' %}
@@ -96,25 +98,27 @@
                                 <span class="tag" style="font-size:0.7rem;">{{ f.rol }}</span>
                             {% endif %}
                         </td>
-                        <td>
-                            {% if f.rol == 'Administrador' or f.obj.is_superuser %}
-                                <span class="t-accent" style="font-size:0.78rem;">Todas (acceso global)</span>
-                            {% else %}
-                                {% for inst in f.instalaciones %}
-                                    <span class="tag me-1" style="font-size:0.68rem;">{{ inst.nombre }}</span>
-                                {% empty %}
-                                    <span class="t-muted" style="font-size:0.78rem;">Sin asignar</span>
-                                {% endfor %}
-                            {% endif %}
+                        <td data-label="Torres">
+                            <div class="text-end text-md-start">
+                                {% if f.rol == 'Administrador' or f.obj.is_superuser %}
+                                    <span class="t-accent" style="font-size:0.78rem;">Todas (acceso global)</span>
+                                {% else %}
+                                    {% for inst in f.instalaciones %}
+                                        <span class="tag me-1 mb-1" style="font-size:0.68rem;">{{ inst.nombre }}</span>
+                                    {% empty %}
+                                        <span class="t-muted" style="font-size:0.78rem;">Sin asignar</span>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
                         </td>
-                        <td>
+                        <td data-label="Estado">
                             {% if f.obj.is_active %}
                                 <span class="status status-ok" style="font-size:0.68rem;">Activo</span>
                             {% else %}
                                 <span class="status status-off" style="font-size:0.68rem;">Inactivo</span>
                             {% endif %}
                         </td>
-                        <td class="text-end" style="white-space:nowrap;">
+                        <td class="text-end td-actions" style="white-space:nowrap;">
                             <a href="{% url 'editar_usuario' f.obj.pk %}" class="btn btn-ghost btn-sm me-1" title="Editar usuario">
                                 <i class="bi bi-pencil"></i>Editar
                             </a>
