@@ -106,6 +106,22 @@ class SeguridadYPermisosRBACTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/dashboard/login/', response.url)
 
+    def test_login_renderiza_y_autentica_correctamente(self):
+        """El formulario de login rediseñado carga campos CSRF, valida error e inicia sesión."""
+        resp_get = self.client.get('/dashboard/login/')
+        self.assertEqual(resp_get.status_code, 200)
+        self.assertContains(resp_get, '¡Bienvenido de vuelta!')
+        self.assertContains(resp_get, 'name="username"')
+        self.assertContains(resp_get, 'name="password"')
+
+        resp_err = self.client.post('/dashboard/login/', {'username': 'admin_test', 'password': 'WrongPassword'})
+        self.assertEqual(resp_err.status_code, 200)
+        self.assertContains(resp_err, 'Usuario o contraseña incorrectos.')
+
+        resp_ok = self.client.post('/dashboard/login/', {'username': 'admin_test', 'password': 'AdminPass2026!'})
+        self.assertEqual(resp_ok.status_code, 302)
+        self.assertEqual(resp_ok.url, '/dashboard/')
+
 
 class APITelemetriaSeguridadTestCase(APITestCase):
     """
