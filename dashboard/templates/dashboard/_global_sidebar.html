@@ -31,36 +31,6 @@
 
     <hr class="yt-divider">
 
-    <!-- Navegación principal estilo YouTube -->
-    <div class="yt-section">
-        <div class="yt-section-lbl yt-text">
-            <span>Operación</span>
-            <i class="bi bi-chevron-right" style="font-size:0.7rem;"></i>
-        </div>
-
-        <a href="{% url 'inicio_dashboard' %}" class="yt-item" title="Monitor de sistemas">
-            <i class="bi bi-grid"></i>
-            <span class="yt-text">Monitor general</span>
-        </a>
-
-        <a href="{% url 'lista_alertas' %}" class="yt-item {% if request.resolver_match.url_name == 'lista_alertas' %}active{% endif %}" title="Centro de alertas">
-            <i class="bi bi-bell"></i>
-            <span class="yt-text flex-grow-1">Alertas</span>
-            {% if global_num_alertas > 0 %}
-            <span class="yt-count yt-text" style="border-color:rgba(244,63,94,.45);color:#fb7185;">{{ global_num_alertas }}</span>
-            {% endif %}
-        </a>
-
-        {% if request.user.is_superuser or perms.auth.view_user %}
-        <a href="{% url 'lista_usuarios' %}" class="yt-item {% if request.resolver_match.url_name == 'lista_usuarios' %}active{% endif %}" title="Gestión de usuarios">
-            <i class="bi bi-people"></i>
-            <span class="yt-text">Usuarios</span>
-        </a>
-        {% endif %}
-    </div>
-
-    <hr class="yt-divider">
-
     {% if request.resolver_match.url_name == 'lista_alertas' %}
     <!-- Filtro rápido por cada torre (para auditoría directa) -->
     <div class="yt-section">
