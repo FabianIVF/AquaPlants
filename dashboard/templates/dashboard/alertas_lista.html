@@ -5,9 +5,7 @@
 {% block main_class %}cockpit-main{% endblock %}
 
 {% block content %}
-    {% if instalacion %}
-        {% include "dashboard/_instalacion_nav.html" %}
-    {% else %}
+    {% if not instalacion %}
         <div class="page-head mb-2">
             <div>
                 <h1>Centro de alertas y notificaciones</h1>
