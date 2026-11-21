@@ -2,300 +2,318 @@
 
 {% block title %}{{ planta.codigo }} — {{ instalacion.nombre }}{% endblock %}
 
+{% block main_class %}cockpit-main{% endblock %}
+
 {% block content %}
-    <!-- Cabecera de la planta -->
-    <div class="panel mb-4">
-        <div class="panel-head">
-            <div>
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <h2 class="panel-title" style="font-size:1.1rem;">{{ planta.codigo }} &middot; {{ planta.especie_nombre }}</h2>
-                    <span id="diag-estado" class="status {{ resumen.estado_css }}">{{ resumen.estado_label }}</span>
-                    <span class="tag">{{ resumen.origen_label }}</span>
-                    {% if planta.lista_para_cosechar %}
-                    <span class="status status-ok">Lista para cosechar</span>
-                    {% endif %}
-                </div>
-                <p class="panel-sub">
-                    {% if planta.variedad %}Variedad: {{ planta.variedad }} &middot; {% endif %}
-                    {% if planta.posicion %}{{ planta.posicion }} &middot; {% endif %}
-                    Etapa: <strong>{{ planta.get_etapa_display }}</strong> &middot;
-                    Actualización automática cada <strong id="segundos-restantes" class="num">5</strong> s
-                </p>
-            </div>
-            <div class="page-actions">
-                <a href="{% url 'lista_plantas' instalacion.pk %}" class="btn btn-ghost btn-sm">
-                    <i class="bi bi-arrow-left"></i>Todas las plantas
-                </a>
-                {% if perms.telemetria.change_planta %}
-                <a href="{% url 'editar_planta' instalacion.pk planta.pk %}" class="btn btn-ghost btn-sm">
-                    <i class="bi bi-pencil"></i>Editar planta
-                </a>
+    <nav class="cockpit-crumb" aria-label="Ruta actual">
+        <a href="{% url 'inicio_dashboard' %}">Monitor</a>
+        {% if instalacion.invernadero %}
+        <span class="sep">/</span>
+        <a href="{% url 'inicio_dashboard' %}?invernadero={{ instalacion.invernadero.pk }}">{{ instalacion.invernadero.nombre }}</a>
+        {% endif %}
+        <span class="sep">/</span>
+        <a href="{% url 'detalle_instalacion' instalacion.pk %}">{{ instalacion.nombre }}</a>
+        <span class="sep">/</span>
+        <a href="{% url 'lista_plantas' instalacion.pk %}">Plantas</a>
+        <span class="sep">/</span>
+        <span class="current">{{ planta.codigo }}</span>
+    </nav>
+
+    <!-- Barra Cockpit integral de la planta -->
+    <div class="cockpit-bar">
+        <div class="cockpit-kpis">
+            <div class="cockpit-kpi">
+                <strong style="font-size:0.95rem;">{{ planta.codigo }}</strong>
+                <span class="t-muted" style="font-size:0.8rem;">{{ planta.especie_nombre }}</span>
+                <span id="diag-estado" class="status {{ resumen.estado_css }}">{{ resumen.estado_label }}</span>
+                {% if planta.lista_para_cosechar %}
+                <span class="status status-ok" style="font-size:0.68rem;">Lista para cosechar</span>
+                {% elif resumen.pre_cosecha %}
+                <span class="status status-warn" style="font-size:0.68rem;">Pre-cosecha</span>
                 {% endif %}
             </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">Etapa</span>
+                <span class="tag">{{ planta.get_etapa_display }}</span>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">{% if planta.dias_desde_siembra > planta.dias_en_torre %}Edad est.{% else %}Edad{% endif %}</span>
+                <strong class="num">Día {{ planta.dias_desde_siembra }}</strong>
+                <span class="t-muted num" style="font-size:0.74rem;">
+                    ({% if planta.dias_para_cosecha == 0 %}Lista{% else %}faltan {{ planta.dias_para_cosecha }}d{% endif %})
+                </span>
+            </div>
+            <span class="cockpit-sep"></span>
+            <div class="cockpit-kpi">
+                <span class="cockpit-kpi-lbl">En rango</span>
+                <strong id="diag-pct" class="num">
+                    {% if resumen.porcentaje_en_rango is not None %}{{ resumen.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
+                </strong>
+                <span class="t-muted" style="font-size:0.74rem;">(<span id="diag-tendencia">{{ resumen.tendencia }}</span>)</span>
+            </div>
         </div>
-        <div class="panel-body">
-            <div class="row g-3 align-items-center">
-                <div class="col-6 col-md-2">
-                    <div class="stat-label">{% if planta.dias_desde_siembra > planta.dias_en_torre %}Edad est. cultivo{% else %}Día de cultivo{% endif %}</div>
-                    <div class="fw-semibold num" style="font-size:1.35rem;">Día {{ planta.dias_desde_siembra }}</div>
-                    <div class="stat-note">
-                        {% if planta.dias_desde_siembra > planta.dias_en_torre %}
-                            En torre: {{ planta.dias_en_torre }}d ({{ planta.fecha_siembra|date:"d/m/Y" }})
-                        {% else %}
-                            Plantada: {{ planta.fecha_siembra|date:"d/m/Y" }}
+
+        <div class="cockpit-controls">
+            <span id="live-pill-estado" class="status status-ok num" style="font-size:0.72rem;">
+                En vivo (<strong id="segundos-restantes">5</strong>s)
+            </span>
+            <button type="button" id="btn-toggle-live" class="btn btn-ghost btn-sm" title="Pausar o reanudar refresco automático">
+                <i class="bi bi-pause-fill me-0"></i>
+            </button>
+            <button type="button" id="btn-refresh-now" class="btn btn-ghost btn-sm" title="Actualizar ahora">
+                <i class="bi bi-arrow-clockwise me-0"></i>
+            </button>
+            <a href="{% url 'lista_plantas' instalacion.pk %}" class="btn btn-ghost btn-sm">
+                <i class="bi bi-arrow-left"></i>Plantas
+            </a>
+            {% if perms.telemetria.change_planta %}
+            <a href="{% url 'editar_planta' instalacion.pk planta.pk %}" class="btn btn-primary-ap btn-sm">
+                <i class="bi bi-pencil"></i>Editar
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Grilla Cockpit de Planta sin scroll -->
+    <div class="cockpit-grid">
+        <!-- ZONA IZQUIERDA: Sensores propios/heredados + Gráfico enfocado por etapa -->
+        <div class="cockpit-left">
+            <div class="sensor-matrix" id="tarjetas-sensores">
+                {% for item in resumen.sensores_detalle %}
+                {% with sensor=item.sensor %}
+                <button
+                    type="button"
+                    class="sensor-tile {% if forloop.first %}active{% endif %}"
+                    data-sensor="{{ sensor.tipo }}"
+                    data-label="{{ sensor.get_tipo_display }}"
+                    data-unit="{{ sensor.get_unidad }}"
+                    data-min="{% if item.rango_min is not None %}{{ item.rango_min|stringformat:'g' }}{% endif %}"
+                    data-max="{% if item.rango_max is not None %}{{ item.rango_max|stringformat:'g' }}{% endif %}"
+                    onclick="seleccionarSensor('{{ sensor.tipo }}')"
+                >
+                    <div class="sensor-tile-head">
+                        <span class="sensor-tile-name">{{ sensor.get_tipo_display }}</span>
+                        <span id="estado-{{ sensor.tipo }}" class="status status-off" style="padding:0.16rem 0.42rem;font-size:0.65rem;">Esperando</span>
+                    </div>
+                    <div class="d-flex align-items-baseline justify-content-between gap-2">
+                        <div class="d-flex align-items-baseline gap-1">
+                            <span id="valor-{{ sensor.tipo }}" class="sensor-tile-val">&mdash;</span>
+                            <span id="unidad-{{ sensor.tipo }}" class="metric-unit">{{ sensor.get_unidad }}</span>
+                        </div>
+                        {% if item.rango_min is not None or item.rango_max is not None %}
+                        <span class="t-muted num" style="font-size:0.68rem;">
+                            {{ item.rango_min|floatformat:"-1" }}&ndash;{{ item.rango_max|floatformat:"-1" }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="sensor-tile-foot">
+                        <span class="text-truncate">
+                            {% if item.rango_origen == 'etapa' %}
+                                Rango {{ planta.get_etapa_display|lower }}: {{ item.rango_min|floatformat:"-1" }}–{{ item.rango_max|floatformat:"-1" }}
+                            {% elif item.rango_origen == 'regla' %}
+                                Regla: {{ item.rango_min|floatformat:"-1" }}–{{ item.rango_max|floatformat:"-1" }}
+                            {% endif %}
+                        </span>
+                        <span id="ultima-{{ sensor.tipo }}" class="num flex-shrink-0">Última com.: &mdash;</span>
+                    </div>
+                </button>
+                {% endwith %}
+                {% empty %}
+                <div class="panel" style="grid-column: 1 / -1;">
+                    <div class="empty-state py-4">
+                        <div class="empty-state-icon"><i class="bi bi-cpu"></i></div>
+                        <div class="empty-state-title">Sin sensores activos asociados</div>
+                        <div class="empty-state-sub mb-2">Esta planta no tiene sondas propias ni hereda sensores compartidos activos en su torre.</div>
+                        {% if perms.telemetria.change_planta %}
+                        <a href="{% url 'editar_planta' instalacion.pk planta.pk %}" class="btn btn-primary-ap btn-sm">
+                            <i class="bi bi-sliders"></i>Asignar sensores
+                        </a>
                         {% endif %}
                     </div>
                 </div>
-                <div class="col-6 col-md-2">
-                    <div class="stat-label">Cosecha aprox.</div>
-                    <div class="fw-semibold num" style="font-size:1.35rem;">
-                        {% if planta.dias_para_cosecha == 0 %}Lista{% else %}{{ planta.dias_para_cosecha }} d{% endif %}
+                {% endfor %}
+            </div>
+
+            {% if sensores %}
+            <div class="panel chart-panel">
+                <div class="panel-head py-2 px-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <h2 id="chart-titulo-activo" class="panel-title">Tendencia en vivo</h2>
+                        <span id="chart-rango-activo" class="tag num" style="font-size:0.7rem;">Objetivo: &mdash;</span>
                     </div>
-                    <div class="stat-note">{{ planta.fecha_estimada_cosecha|date:"d/m/Y" }} ({{ planta.dias_ciclo }}d)</div>
-                </div>
-                <div class="col-6 col-md-2">
-                    <div class="stat-label">En rango</div>
-                    <div id="diag-pct" class="fw-semibold num" style="font-size:1.35rem;">
-                        {% if resumen.porcentaje_en_rango is not None %}{{ resumen.porcentaje_en_rango }}%{% else %}&mdash;{% endif %}
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="chart-pills" id="chart-selector-pills">
+                            {% for sensor in sensores %}
+                            <button
+                                type="button"
+                                class="chart-pill {% if forloop.first %}active{% endif %}"
+                                data-sensor-pill="{{ sensor.tipo }}"
+                                onclick="seleccionarSensor('{{ sensor.tipo }}')"
+                            >
+                                {{ sensor.info_catalogo.nombre|default:sensor.get_tipo_display|truncatechars:14 }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <button type="button" id="btn-ver-todos" class="btn btn-ghost btn-sm" style="padding:0.18rem 0.5rem;font-size:0.72rem;" title="Mostrar todos los gráficos">
+                            Todos
+                        </button>
                     </div>
-                    <div class="stat-note">Tendencia: <span id="diag-tendencia">{{ resumen.tendencia }}</span></div>
                 </div>
-                <div class="col-12 col-md-6">
+                <div class="chart-canvas-wrap">
+                    <canvas id="chart-principal"></canvas>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ZONA DERECHA: Consola agronómica y auditoría por pestañas -->
+        <div class="panel audit-panel">
+            <div class="audit-tabs" role="tablist" aria-label="Información de planta">
+                <button type="button" class="audit-tab-btn active" data-audit-tab="diagnostico" onclick="activarAuditTab('diagnostico')">
+                    <i class="bi bi-clipboard2-pulse"></i>Diagnóstico y ciclo
+                </button>
+                <button type="button" class="audit-tab-btn" data-audit-tab="lecturas" onclick="activarAuditTab('lecturas')">
+                    <i class="bi bi-list-ul"></i>Lecturas
+                </button>
+                <button type="button" class="audit-tab-btn" data-audit-tab="reglas" onclick="activarAuditTab('reglas')">
+                    <i class="bi bi-sliders2"></i>Reglas
+                    <span class="tag num" style="padding:0.05rem 0.38rem;font-size:0.66rem;">{{ reglas|length }}</span>
+                </button>
+            </div>
+
+            <div class="audit-body">
+                <!-- TAB 1: Diagnóstico y ciclo de cosecha -->
+                <div id="audit-pane-diagnostico" class="audit-pane active p-3">
+                    <div class="mb-3 p-2 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
+                        <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:0.78rem;">
+                            <span class="fw-semibold">Progreso de ciclo ({{ planta.dias_ciclo }}d)</span>
+                            <span class="t-accent fw-semibold num">{{ planta.progreso_cosecha }}%</span>
+                        </div>
+                        <div class="progress mb-2" style="height:6px;background:var(--ap-surface);">
+                            <div class="progress-bar" role="progressbar" style="width:{{ planta.progreso_cosecha }}%;background:var(--ap-accent);" aria-valuenow="{{ planta.progreso_cosecha }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="d-flex flex-wrap justify-content-between t-muted num" style="font-size:0.74rem;gap:0.4rem;">
+                            <span>En torre: {{ planta.dias_en_torre }}d ({{ planta.fecha_siembra|date:"d/m/Y" }})</span>
+                            <span>Cosecha aprox.: {{ planta.fecha_estimada_cosecha|date:"d/m/Y" }}</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-1 mb-3">
+                        <span class="tag">{{ resumen.origen_label }}</span>
+                        {% if planta.variedad %}<span class="tag">{{ planta.variedad }}</span>{% endif %}
+                        {% if planta.posicion %}<span class="tag">{{ planta.posicion }}</span>{% endif %}
+                    </div>
+
                     <div class="stat-label mb-1">Diagnóstico y recomendaciones</div>
-                    <ul id="diag-recs" class="rec-list">
+                    <ul id="diag-recs" class="rec-list mb-3">
                         {% for rec in resumen.recomendaciones %}
                         <li>{{ rec }}</li>
                         {% endfor %}
                     </ul>
+
                     {% if planta.notas %}
-                    <div class="t-muted mt-2" style="font-size:0.78rem;"><strong>Notas:</strong> {{ planta.notas }}</div>
+                    <div class="notice" style="font-size:0.78rem;">
+                        <strong>Notas agronómicas:</strong> {{ planta.notas }}
+                    </div>
                     {% endif %}
+                </div>
+
+                <!-- TAB 2: Últimas mediciones de la planta -->
+                <div id="audit-pane-lecturas" class="audit-pane">
+                    <table class="tbl tbl-compact num">
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Sensor</th>
+                                <th>Valor</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla">
+                            <tr><td colspan="4" class="empty py-4">Esperando datos del simulador IoT...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- TAB 3: Reglas aplicables -->
+                <div id="audit-pane-reglas" class="audit-pane">
+                    <table class="tbl tbl-compact">
+                        <thead>
+                            <tr>
+                                <th>Sensor</th>
+                                <th>Mín / Máx</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for regla in reglas %}
+                            <tr>
+                                <td style="font-size:0.78rem;"><strong>{{ regla.sensor.get_tipo_display }}</strong></td>
+                                <td class="num" style="font-size:0.76rem;">
+                                    {% if regla.limite_minimo is not None %}<span class="limit-lo">&lt;{{ regla.limite_minimo }}</span>{% else %}<span class="t-muted">&mdash;</span>{% endif %}
+                                    /
+                                    {% if regla.limite_maximo is not None %}<span class="limit-hi">&gt;{{ regla.limite_maximo }}</span>{% else %}<span class="t-muted">&mdash;</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if regla.activa %}
+                                        <span class="status status-ok" style="font-size:0.65rem;">Activa</span>
+                                    {% else %}
+                                        <span class="status status-off" style="font-size:0.65rem;">Inactiva</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end" style="white-space:nowrap;">
+                                    {% if perms.telemetria.change_reglaalerta %}
+                                    <a href="{% url 'editar_regla' regla.id %}" class="btn btn-ghost btn-sm" style="padding:0.15rem 0.42rem;" title="Editar"><i class="bi bi-pencil me-0"></i></a>
+                                    {% endif %}
+                                    {% if perms.telemetria.delete_reglaalerta %}
+                                    <a href="{% url 'eliminar_regla' regla.id %}" class="btn btn-ghost-danger btn-sm" style="padding:0.15rem 0.42rem;" title="Eliminar"><i class="bi bi-trash3 me-0"></i></a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="empty py-4">No hay reglas configuradas sobre estos sensores.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Tarjetas de sensores propios o heredados de la planta -->
-    <div class="row g-3 mb-4">
-        {% for item in resumen.sensores_detalle %}
-        {% with sensor=item.sensor %}
-        <div class="col-6 col-md-4">
-            <div class="panel stat">
-                <div class="metric-label">{{ sensor.get_tipo_display }}</div>
-                <div class="d-flex align-items-baseline gap-2 mt-2">
-                    <div id="valor-{{ sensor.tipo }}" class="metric-value">&mdash;</div>
-                    <span id="unidad-{{ sensor.tipo }}" class="metric-unit">{{ sensor.get_unidad }}</span>
-                </div>
-                <span id="estado-{{ sensor.tipo }}" class="status status-off mt-2">Esperando</span>
-                {% if item.rango_min is not None or item.rango_max is not None %}
-                <div class="t-muted num mt-2" style="font-size:0.72rem;">
-                    {% if item.rango_origen == 'etapa' %}
-                        Rango {{ planta.get_etapa_display|lower }}:
-                    {% elif item.rango_origen == 'regla' %}
-                        Regla activa:
-                    {% else %}
-                        Rango óptimo:
-                    {% endif %}
-                    {{ item.rango_min|floatformat:"-1" }} &ndash; {{ item.rango_max|floatformat:"-1" }} {{ sensor.get_unidad }}
-                </div>
+            <div class="audit-foot">
+                <a href="{% url 'detalle_instalacion' instalacion.pk %}" class="t-muted">
+                    <i class="bi bi-activity me-1"></i>Panel de {{ instalacion.nombre }}
+                </a>
+                {% if perms.telemetria.add_reglaalerta %}
+                <a href="{% url 'crear_regla' instalacion.pk %}" class="t-accent fw-semibold">+ Nueva regla</a>
                 {% endif %}
-                <div id="ultima-{{ sensor.tipo }}" class="t-muted num mt-1" style="font-size:0.72rem;">Última com.: &mdash;</div>
             </div>
         </div>
-        {% endwith %}
-        {% empty %}
-        <div class="col-12">
-            <div class="notice">Esta planta no tiene sensores propios ni la instalación tiene sensores activos configurados.</div>
-        </div>
-        {% endfor %}
     </div>
 
-    <!-- Gráficos en vivo -->
-    <div class="row g-3 mb-4">
+    {% if sensores %}
+    <div id="drawer-todos-graficos" class="row g-3 mt-2 d-none">
         {% for sensor in sensores %}
-        <div class="col-12 col-lg-6">
+        <div class="col-12 col-md-6 col-xl-4">
             <div class="panel">
-                <div class="panel-head">
-                    <h2 class="panel-title">{{ sensor.get_tipo_display }}</h2>
-                    <span class="status status-ok">En vivo</span>
+                <div class="panel-head py-2 px-3">
+                    <h2 class="panel-title" style="font-size:0.82rem;">{{ sensor.get_tipo_display }}</h2>
+                    <span class="status status-ok" style="font-size:0.65rem;">En vivo</span>
                 </div>
-                <div class="panel-body">
-                    <canvas id="chart-{{ sensor.tipo }}" height="140"></canvas>
+                <div class="panel-body p-2">
+                    <canvas id="mini-chart-{{ sensor.tipo }}" height="110"></canvas>
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
-
-    <!-- Tabla compacta de últimas mediciones de la planta -->
-    <div class="panel">
-        <div class="panel-head py-2">
-            <h2 class="panel-title">Últimas mediciones de {{ planta.codigo }}</h2>
-            <span class="status status-ok">En vivo</span>
-        </div>
-        <div class="table-responsive live-table-scroll">
-            <table class="tbl tbl-compact num">
-                <thead>
-                    <tr>
-                        <th>Hora</th>
-                        <th>Sensor</th>
-                        <th>Valor</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody id="cuerpo-tabla">
-                    <tr><td colspan="4" class="empty py-3">Esperando datos del simulador IoT...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    {% endif %}
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-const URL_LIVE  = "{% url 'api_planta_live' instalacion.pk planta.pk %}";
-const INTERVALO = 5000;
-
-const COLORES = {
-    temperatura_agua : { borde: '#22d3ee', fondo: 'rgba(34,211,238,0.12)' },
-    temperatura_aire : { borde: '#fb923c', fondo: 'rgba(251,146,60,0.12)' },
-    temperatura      : { borde: '#fb923c', fondo: 'rgba(251,146,60,0.12)' },
-    humedad          : { borde: '#38bdf8', fondo: 'rgba(56,189,248,0.12)' },
-    ph               : { borde: '#a78bfa', fondo: 'rgba(167,139,250,0.12)' },
-    caudal           : { borde: '#10b981', fondo: 'rgba(16,185,129,0.12)' },
-    nivel_estanque   : { borde: '#60a5fa', fondo: 'rgba(96,165,250,0.12)' },
-    co2              : { borde: '#94a3b8', fondo: 'rgba(148,163,184,0.12)' },
-    fotoperiodo      : { borde: '#fbbf24', fondo: 'rgba(251,191,36,0.12)' },
-    humedad_sustrato : { borde: '#38bdf8', fondo: 'rgba(56,189,248,0.12)' },
-    ph_sustrato      : { borde: '#a78bfa', fondo: 'rgba(167,139,250,0.12)' },
-    temperatura_raiz : { borde: '#22d3ee', fondo: 'rgba(34,211,238,0.12)' },
-};
-
-const ETIQUETAS = {
-    temperatura_agua : 'Temperatura del agua',
-    temperatura_aire : 'Temperatura del aire',
-    temperatura      : 'Temperatura general',
-    humedad          : 'Humedad ambiental',
-    ph               : 'pH solución',
-    caudal           : 'Caudal',
-    nivel_estanque   : 'Nivel del estanque',
-    co2              : 'CO2',
-    fotoperiodo      : 'Fotoperiodo',
-    humedad_sustrato : 'Humedad de sustrato',
-    ph_sustrato      : 'pH de raíz',
-    temperatura_raiz : 'Temperatura de raíz',
-};
-
-const graficos = {};
-document.querySelectorAll('canvas[id^="chart-"]').forEach(canvas => {
-    const tipo = canvas.id.replace('chart-', '');
-    const col = COLORES[tipo] || { borde: '#34a37c', fondo: 'rgba(52,163,124,0.08)' };
-    graficos[tipo] = new Chart(canvas.getContext('2d'), {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: tipo,
-                data: [],
-                borderColor: col.borde,
-                backgroundColor: col.fondo,
-                borderWidth: 1.75,
-                pointRadius: 2,
-                pointBackgroundColor: col.borde,
-                fill: true,
-                tension: 0.3,
-            }]
-        },
-        options: {
-            animation: { duration: 300 },
-            responsive: true,
-            color: '#8b95a5',
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { grid: { color: '#1c222c' }, ticks: { color: '#8b95a5', maxTicksLimit: 8, maxRotation: 0 } },
-                y: { beginAtZero: false, grid: { color: '#1c222c' }, ticks: { color: '#8b95a5' } }
-            }
-        }
-    });
-});
-
-function actualizarResumen(resumen) {
-    if (!resumen) return;
-    const elEstado = document.getElementById('diag-estado');
-    if (elEstado) {
-        elEstado.className = `status ${resumen.estado_css}`;
-        elEstado.textContent = resumen.estado_label;
-    }
-    const elPct = document.getElementById('diag-pct');
-    if (elPct) elPct.textContent = resumen.porcentaje_en_rango !== null ? `${resumen.porcentaje_en_rango}%` : '—';
-    const elTend = document.getElementById('diag-tendencia');
-    if (elTend) elTend.textContent = resumen.tendencia;
-    const elRecs = document.getElementById('diag-recs');
-    if (elRecs && resumen.recomendaciones) {
-        elRecs.innerHTML = resumen.recomendaciones.map(r => `<li>${r}</li>`).join('');
-    }
-}
-
-async function fetchDatos() {
-    try {
-        const resp = await fetch(URL_LIVE, { credentials: 'same-origin' });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-
-        for (const [tipo, datos] of Object.entries(data.sensores)) {
-            const meds = datos.mediciones;
-            const chart = graficos[tipo];
-            if (chart && meds.length) {
-                chart.data.labels = meds.map(m => m.timestamp);
-                chart.data.datasets[0].data = meds.map(m => m.valor);
-                chart.update('none');
-            }
-            if (meds.length) {
-                const ultima = meds[meds.length - 1];
-                const elVal = document.getElementById(`valor-${tipo}`);
-                const elEst = document.getElementById(`estado-${tipo}`);
-                const elUlt = document.getElementById(`ultima-${tipo}`);
-                if (elVal) elVal.textContent = ultima.valor;
-                if (elUlt) elUlt.textContent = `Última com.: ${ultima.timestamp}`;
-                if (elEst) {
-                    elEst.className = ultima.estado_conexion ? 'status status-ok mt-2' : 'status status-err mt-2';
-                    elEst.textContent = ultima.estado_conexion ? 'Conectado' : 'Fallo';
-                }
-            }
-        }
-
-        const filas = [];
-        for (const [tipo, datos] of Object.entries(data.sensores)) {
-            datos.mediciones.forEach(m => filas.push({ tipo, ...m }));
-        }
-        filas.sort((a, b) => (b.timestamp_iso || b.timestamp).localeCompare(a.timestamp_iso || a.timestamp));
-        const tbody = document.getElementById('cuerpo-tabla');
-        if (tbody && filas.length) {
-            tbody.innerHTML = filas.slice(0, 10).map((f, i) => `
-                <tr class="${i === 0 ? 'row-nueva' : ''}">
-                    <td class="t-muted">${f.timestamp}</td>
-                    <td>${ETIQUETAS[f.tipo] ?? f.tipo}</td>
-                    <td><strong style="color:${COLORES[f.tipo]?.borde ?? '#e6e9ee'}">${f.valor}</strong></td>
-                    <td>${f.estado_conexion ? '<span class="status status-ok">Conectado</span>' : '<span class="status status-err">Fallo</span>'}</td>
-                </tr>`).join('');
-        }
-
-        actualizarResumen(data.resumen);
-    } catch (err) {
-        console.warn('Error al obtener datos de planta:', err);
-    }
-}
-
-const elSeg = document.getElementById('segundos-restantes');
-let cuenta = INTERVALO / 1000;
-setInterval(() => {
-    cuenta -= 1;
-    if (elSeg) elSeg.textContent = cuenta > 0 ? cuenta : (INTERVALO / 1000);
-    if (cuenta <= 0) cuenta = INTERVALO / 1000;
-}, 1000);
-
-fetchDatos();
-setInterval(fetchDatos, INTERVALO);
-</script>
+<script>const URL_LIVE = "{% url 'api_planta_live' instalacion.pk planta.pk %}";</script>
+{% include "dashboard/_cockpit_live_js.html" %}
 {% endblock %}

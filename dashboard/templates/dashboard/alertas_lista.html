@@ -5,6 +5,30 @@
 {% block main_class %}cockpit-main{% endblock %}
 
 {% block content %}
+    <nav class="cockpit-crumb" aria-label="Ruta actual">
+        {% if instalacion %}
+        <a href="{% url 'inicio_dashboard' %}">Monitor</a>
+        {% if instalacion.invernadero %}
+        <span class="sep">/</span>
+        <a href="{% url 'inicio_dashboard' %}?invernadero={{ instalacion.invernadero.pk }}">{{ instalacion.invernadero.nombre }}</a>
+        {% endif %}
+        <span class="sep">/</span>
+        <a href="{% url 'detalle_instalacion' instalacion.pk %}">{{ instalacion.nombre }}</a>
+        <span class="sep">/</span>
+        <span class="current">Alertas</span>
+        {% else %}
+        <a href="{% url 'inicio_dashboard' %}">Monitor</a>
+        <span class="sep">/</span>
+        {% if instalacion_filtrada %}
+        <a href="{% url 'lista_alertas' %}">Centro de alertas</a>
+        <span class="sep">/</span>
+        <span class="current">{{ instalacion_filtrada.nombre }}</span>
+        {% else %}
+        <span class="current">Centro de alertas</span>
+        {% endif %}
+        {% endif %}
+    </nav>
+
     <!-- Barra Cockpit: KPIs + selector entre torres + filtros de auditoría -->
     <div class="cockpit-bar">
         <div class="cockpit-kpis">
@@ -127,17 +151,19 @@
                     <span class="t-muted num" style="font-size:0.74rem;">{{ g.alertas|length }} alerta(s)</span>
                 </div>
 
-                <div class="d-flex flex-wrap align-items-center gap-1">
-                    <a
-                        href="{% url 'lista_alertas' %}?instalacion={{ inst.pk }}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_severidad %}&severidad={{ filtro_severidad }}{% endif %}"
-                        class="btn btn-ghost btn-sm"
-                        title="Enfocar auditoría solo en {{ inst.nombre }}"
-                    >
-                        <i class="bi bi-funnel"></i>Solo esta torre
-                    </a>
-                    <a href="{% url 'detalle_instalacion' inst.pk %}" class="btn btn-ghost btn-sm" title="Abrir Panel en vivo">
-                        <i class="bi bi-activity"></i>Panel
-                    </a>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <div class="d-flex gap-1">
+                        <a
+                            href="{% url 'lista_alertas' %}?instalacion={{ inst.pk }}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_severidad %}&severidad={{ filtro_severidad }}{% endif %}"
+                            class="btn btn-ghost btn-sm"
+                            title="Enfocar auditoría solo en {{ inst.nombre }}"
+                        >
+                            <i class="bi bi-funnel"></i>Solo esta torre
+                        </a>
+                        <a href="{% url 'detalle_instalacion' inst.pk %}" class="btn btn-ghost btn-sm" title="Abrir Panel en vivo">
+                            <i class="bi bi-activity"></i>Panel
+                        </a>
+                    </div>
                     {% if puede_gestionar and g.pendientes > 0 %}
                     <form method="post" action="{% url 'marcar_todas_alertas_leidas' %}" class="d-inline">
                         {% csrf_token %}
@@ -178,8 +204,13 @@
         {% endwith %}
         {% empty %}
         <div class="panel">
-            <div class="panel-body text-center py-5 t-muted">
-                No se encontraron alertas con los filtros aplicados.
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="bi bi-bell-slash"></i></div>
+                <div class="empty-state-title">Sin alertas coincidentes</div>
+                <div class="empty-state-sub">No hay alertas registradas para los filtros o torre seleccionados en este momento.</div>
+                {% if filtro_estado or filtro_severidad or filtro_inst or busqueda %}
+                <a href="{% url 'lista_alertas' %}" class="btn btn-ghost btn-sm"><i class="bi bi-x-lg"></i>Limpiar filtros</a>
+                {% endif %}
             </div>
         </div>
         {% endfor %}

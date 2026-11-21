@@ -1,0 +1,412 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const INTERVALO = 5000;
+
+function escHtml(txt) {
+    return String(txt ?? '').replace(/[&<>"']/g, ch => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+    ));
+}
+
+const COLORES = {
+    temperatura_agua : { borde: '#22d3ee', fondo: 'rgba(34,211,238,0.12)' },
+    temperatura_aire : { borde: '#fb923c', fondo: 'rgba(251,146,60,0.12)' },
+    temperatura      : { borde: '#fb923c', fondo: 'rgba(251,146,60,0.12)' },
+    humedad          : { borde: '#38bdf8', fondo: 'rgba(56,189,248,0.12)' },
+    ph               : { borde: '#a78bfa', fondo: 'rgba(167,139,250,0.12)' },
+    caudal           : { borde: '#10b981', fondo: 'rgba(16,185,129,0.12)' },
+    nivel_estanque   : { borde: '#60a5fa', fondo: 'rgba(96,165,250,0.12)' },
+    co2              : { borde: '#94a3b8', fondo: 'rgba(148,163,184,0.12)' },
+    fotoperiodo      : { borde: '#fbbf24', fondo: 'rgba(251,191,36,0.12)' },
+    humedad_sustrato : { borde: '#38bdf8', fondo: 'rgba(56,189,248,0.12)' },
+    ph_sustrato      : { borde: '#a78bfa', fondo: 'rgba(167,139,250,0.12)' },
+    temperatura_raiz : { borde: '#22d3ee', fondo: 'rgba(34,211,238,0.12)' },
+};
+
+const ETIQUETAS = {
+    temperatura_agua : 'Temp. agua',
+    temperatura_aire : 'Temp. aire',
+    temperatura      : 'Temperatura',
+    humedad          : 'Humedad',
+    ph               : 'pH solución',
+    caudal           : 'Caudal',
+    nivel_estanque   : 'Estanque',
+    co2              : 'CO2',
+    fotoperiodo      : 'Fotoperiodo',
+    humedad_sustrato : 'Hum. sustrato',
+    ph_sustrato      : 'pH de raíz',
+    temperatura_raiz : 'Temp. raíz',
+};
+
+const sensorMeta = {};
+document.querySelectorAll('.sensor-tile[data-sensor]').forEach(tile => {
+    const tipo = tile.dataset.sensor;
+    sensorMeta[tipo] = {
+        label: tile.dataset.label || tipo,
+        unit: tile.dataset.unit || '',
+        min: tile.dataset.min !== '' ? parseFloat(tile.dataset.min) : null,
+        max: tile.dataset.max !== '' ? parseFloat(tile.dataset.max) : null,
+    };
+});
+
+let sensorActivo = Object.keys(sensorMeta)[0] || null;
+let datosSensoresCache = {};
+let enPausa = false;
+let cuenta = INTERVALO / 1000;
+
+const pluginLimites = {
+    id: 'limitesObjetivo',
+    afterDatasetsDraw(chart) {
+        const meta = sensorMeta[sensorActivo];
+        if (!meta) return;
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea || !scales.y) return;
+
+        const dibujarLinea = (valor, color, etiqueta) => {
+            if (valor === null || Number.isNaN(valor)) return;
+            const y = scales.y.getPixelForValue(valor);
+            if (y < chartArea.top - 4 || y > chartArea.bottom + 4) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.setLineDash([5, 4]);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.1;
+            ctx.moveTo(chartArea.left, y);
+            ctx.lineTo(chartArea.right, y);
+            ctx.stroke();
+            ctx.fillStyle = color;
+            ctx.font = '10px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(etiqueta, chartArea.right - 4, Math.max(chartArea.top + 10, y - 4));
+            ctx.restore();
+        };
+
+        dibujarLinea(meta.max, 'rgba(251, 113, 133, 0.78)', `Máx ${meta.max}`);
+        dibujarLinea(meta.min, 'rgba(56, 189, 248, 0.78)', `Mín ${meta.min}`);
+    }
+};
+
+let chartPrincipal = null;
+const canvasPrincipal = document.getElementById('chart-principal');
+if (canvasPrincipal) {
+    chartPrincipal = new Chart(canvasPrincipal.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '',
+                data: [],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16,185,129,0.12)',
+                borderWidth: 2,
+                pointRadius: 2.5,
+                pointHoverRadius: 4,
+                fill: true,
+                tension: 0.3,
+            }]
+        },
+        options: {
+            animation: { duration: 220 },
+            responsive: true,
+            maintainAspectRatio: false,
+            color: '#8fb2ba',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const u = (sensorMeta[sensorActivo] && sensorMeta[sensorActivo].unit) || '';
+                            return ` ${ctx.parsed.y} ${u}`.trim();
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: '#182b33' }, ticks: { color: '#8fb2ba', maxTicksLimit: 7, maxRotation: 0 } },
+                y: { beginAtZero: false, grid: { color: '#182b33' }, ticks: { color: '#8fb2ba' } }
+            }
+        },
+        plugins: [pluginLimites]
+    });
+}
+
+const miniGraficos = {};
+function inicializarMiniGraficos() {
+    document.querySelectorAll('canvas[id^="mini-chart-"]').forEach(canvas => {
+        const tipo = canvas.id.replace('mini-chart-', '');
+        if (miniGraficos[tipo]) return;
+        const col = COLORES[tipo] || { borde: '#10b981', fondo: 'rgba(16,185,129,0.12)' };
+        miniGraficos[tipo] = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    borderColor: col.borde,
+                    backgroundColor: col.fondo,
+                    borderWidth: 1.6,
+                    pointRadius: 1.5,
+                    fill: true,
+                    tension: 0.3,
+                }]
+            },
+            options: {
+                animation: false,
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#182b33' }, ticks: { color: '#8fb2ba', maxTicksLimit: 5, maxRotation: 0 } },
+                    y: { beginAtZero: false, grid: { color: '#182b33' }, ticks: { color: '#8fb2ba' } }
+                }
+            }
+        });
+    });
+}
+
+function renderizarChartPrincipal() {
+    if (!chartPrincipal || !sensorActivo) return;
+    const meta = sensorMeta[sensorActivo] || { label: sensorActivo, unit: '', min: null, max: null };
+    const col = COLORES[sensorActivo] || { borde: '#10b981', fondo: 'rgba(16,185,129,0.12)' };
+    const meds = (datosSensoresCache[sensorActivo] && datosSensoresCache[sensorActivo].mediciones) || [];
+
+    const elTitulo = document.getElementById('chart-titulo-activo');
+    if (elTitulo) elTitulo.textContent = meta.label;
+
+    const elRango = document.getElementById('chart-rango-activo');
+    if (elRango) {
+        if (meta.min !== null && meta.max !== null) {
+            elRango.textContent = `Objetivo: ${meta.min}–${meta.max} ${meta.unit}`.trim();
+        } else {
+            elRango.textContent = 'Sin rango definido';
+        }
+    }
+
+    chartPrincipal.data.labels = meds.map(m => m.timestamp);
+    chartPrincipal.data.datasets[0].data = meds.map(m => m.valor);
+    chartPrincipal.data.datasets[0].borderColor = col.borde;
+    chartPrincipal.data.datasets[0].backgroundColor = col.fondo;
+    chartPrincipal.data.datasets[0].pointBackgroundColor = col.borde;
+    chartPrincipal.update('none');
+}
+
+function seleccionarSensor(tipo) {
+    sensorActivo = tipo;
+    document.querySelectorAll('.sensor-tile[data-sensor]').forEach(el => {
+        el.classList.toggle('active', el.dataset.sensor === tipo);
+    });
+    document.querySelectorAll('[data-sensor-pill]').forEach(el => {
+        el.classList.toggle('active', el.dataset.sensorPill === tipo);
+    });
+    renderizarChartPrincipal();
+}
+
+function activarAuditTab(nombre) {
+    document.querySelectorAll('[data-audit-tab]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.auditTab === nombre);
+    });
+    document.querySelectorAll('.audit-pane').forEach(pane => {
+        pane.classList.toggle('active', pane.id === `audit-pane-${nombre}`);
+    });
+}
+
+function actualizarTarjeta(tipo, mediciones) {
+    if (!mediciones.length) return;
+    const ultima = mediciones[mediciones.length - 1];
+    const meta = sensorMeta[tipo];
+
+    const elValor  = document.getElementById(`valor-${tipo}`);
+    const elEstado = document.getElementById(`estado-${tipo}`);
+    const elUltima = document.getElementById(`ultima-${tipo}`);
+    const tile     = document.querySelector(`.sensor-tile[data-sensor="${tipo}"]`);
+    if (!elValor) return;
+
+    elValor.textContent = ultima.valor;
+    if (elUltima) elUltima.textContent = `Última com.: ${ultima.timestamp}`;
+
+    const fueraRango = ultima.estado_conexion && meta && (
+        (meta.min !== null && ultima.valor < meta.min) ||
+        (meta.max !== null && ultima.valor > meta.max)
+    );
+    if (tile) tile.classList.toggle('tile-out', Boolean(fueraRango || !ultima.estado_conexion));
+
+    if (elEstado) {
+        if (!ultima.estado_conexion) {
+            elEstado.className = 'status status-err';
+            elEstado.textContent = 'Fallo';
+        } else if (fueraRango) {
+            elEstado.className = 'status status-err';
+            elEstado.textContent = 'Fuera';
+        } else {
+            elEstado.className = 'status status-ok';
+            elEstado.textContent = 'OK';
+        }
+    }
+}
+
+function actualizarTabla(sensoresDatos) {
+    const filas = [];
+    for (const [tipo, datos] of Object.entries(sensoresDatos)) {
+        datos.mediciones.forEach(m => filas.push({ tipo, ...m }));
+    }
+    filas.sort((a, b) => (b.timestamp_iso || b.timestamp).localeCompare(a.timestamp_iso || a.timestamp));
+
+    const tbody = document.getElementById('cuerpo-tabla');
+    if (!tbody || !filas.length) return;
+
+    tbody.innerHTML = filas.slice(0, 12).map((f, i) => `
+        <tr class="${i === 0 ? 'row-nueva' : ''}" style="cursor:pointer;" onclick="seleccionarSensor('${f.tipo}')">
+            <td class="t-muted">${escHtml(f.timestamp)}</td>
+            <td>${escHtml(ETIQUETAS[f.tipo] ?? f.tipo)}</td>
+            <td><strong style="color:${COLORES[f.tipo]?.borde ?? '#eef7f4'}">${escHtml(f.valor)}</strong></td>
+            <td>
+                ${f.estado_conexion
+                    ? '<span class="status status-ok" style="font-size:0.65rem;">OK</span>'
+                    : '<span class="status status-err" style="font-size:0.65rem;">Fallo</span>'}
+            </td>
+        </tr>`).join('');
+}
+
+function actualizarAlertas(alertas, numAlertas) {
+    const badge = document.getElementById('badge-alertas');
+    const tabCount = document.getElementById('tab-alertas-count');
+    const lista = document.getElementById('cockpit-alertas-lista');
+
+    if (badge) {
+        badge.textContent = `${numAlertas} activa(s)`;
+        badge.className = numAlertas > 0 ? 'status status-err' : 'status status-ok';
+    }
+    if (tabCount) tabCount.textContent = numAlertas;
+
+    if (!lista) return;
+    if (!alertas.length) {
+        lista.innerHTML = (
+            '<div class="empty-state py-4">'
+            + '<div class="empty-state-icon"><i class="bi bi-check2-circle"></i></div>'
+            + '<div class="empty-state-title">Sin alertas pendientes</div>'
+            + '<div class="empty-state-sub mb-0">Todos los umbrales configurados están bajo control.</div>'
+            + '</div>'
+        );
+        return;
+    }
+
+    lista.innerHTML = alertas.map(a => {
+        const esRoja = a.mensaje.includes('ROJA') || a.mensaje.includes('ALTA');
+        const sev = esRoja ? 'sev-high' : 'sev-low';
+        return `<div class="alert-feed-item">
+            <div><span class="sev ${sev}"></span><span>${escHtml(a.mensaje)}</span></div>
+            <span class="t-muted num" style="white-space:nowrap;">${escHtml(a.hora)}</span>
+        </div>`;
+    }).join('');
+}
+
+function actualizarMiniGraficos() {
+    const drawer = document.getElementById('drawer-todos-graficos');
+    if (!drawer || drawer.classList.contains('d-none')) return;
+    for (const [tipo, datos] of Object.entries(datosSensoresCache)) {
+        const ch = miniGraficos[tipo];
+        if (!ch || !datos.mediciones.length) continue;
+        ch.data.labels = datos.mediciones.map(m => m.timestamp);
+        ch.data.datasets[0].data = datos.mediciones.map(m => m.valor);
+        ch.update('none');
+    }
+}
+
+async function fetchDatos() {
+    try {
+        const resp = await fetch(URL_LIVE, { credentials: 'same-origin' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        datosSensoresCache = data.sensores || {};
+        for (const [tipo, datos] of Object.entries(datosSensoresCache)) {
+            actualizarTarjeta(tipo, datos.mediciones);
+        }
+        renderizarChartPrincipal();
+        actualizarMiniGraficos();
+        actualizarTabla(datosSensoresCache);
+        actualizarAlertas(data.alertas || [], data.num_alertas || 0);
+
+        if (data.resumen) {
+            const elEstado = document.getElementById('diag-estado');
+            if (elEstado) {
+                elEstado.className = `status ${data.resumen.estado_css}`;
+                elEstado.textContent = data.resumen.estado_label;
+            }
+            const elPct = document.getElementById('diag-pct');
+            if (elPct) elPct.textContent = data.resumen.porcentaje_en_rango !== null ? `${data.resumen.porcentaje_en_rango}%` : '—';
+            const elTend = document.getElementById('diag-tendencia');
+            if (elTend) elTend.textContent = data.resumen.tendencia;
+
+            const recs = data.resumen.recomendaciones || [];
+            const elHint = document.getElementById('diag-rec-principal');
+            if (elHint && recs.length) {
+                elHint.innerHTML = `<i class="bi bi-lightbulb me-1 t-accent"></i>${escHtml(recs[0])}`;
+                elHint.title = recs[0];
+            }
+            const elRecs = document.getElementById('diag-recs');
+            if (elRecs && recs.length) {
+                elRecs.innerHTML = recs.map(r => `<li>${escHtml(r)}</li>`).join('');
+            }
+        }
+    } catch (err) {
+        console.warn('Error al obtener datos en vivo:', err);
+    }
+}
+
+const btnVerTodos = document.getElementById('btn-ver-todos');
+if (btnVerTodos) {
+    btnVerTodos.addEventListener('click', () => {
+        const drawer = document.getElementById('drawer-todos-graficos');
+        if (!drawer) return;
+        const abrir = drawer.classList.contains('d-none');
+        drawer.classList.toggle('d-none', !abrir);
+        btnVerTodos.classList.toggle('active', abrir);
+        if (abrir) {
+            inicializarMiniGraficos();
+            actualizarMiniGraficos();
+        }
+    });
+}
+
+const btnToggleLive = document.getElementById('btn-toggle-live');
+const livePill = document.getElementById('live-pill-estado');
+if (btnToggleLive) {
+    btnToggleLive.addEventListener('click', () => {
+        enPausa = !enPausa;
+        btnToggleLive.innerHTML = enPausa
+            ? '<i class="bi bi-play-fill me-0"></i>'
+            : '<i class="bi bi-pause-fill me-0"></i>';
+        btnToggleLive.title = enPausa ? 'Reanudar refresco automático' : 'Pausar refresco automático';
+        if (livePill) {
+            livePill.className = enPausa ? 'status status-warn num' : 'status status-ok num';
+            livePill.innerHTML = enPausa
+                ? 'Pausado'
+                : `En vivo (<strong id="segundos-restantes">${cuenta}</strong>s)`;
+        }
+    });
+}
+
+const btnRefreshNow = document.getElementById('btn-refresh-now');
+if (btnRefreshNow) {
+    btnRefreshNow.addEventListener('click', () => {
+        cuenta = INTERVALO / 1000;
+        const segActual = document.getElementById('segundos-restantes');
+        if (segActual) segActual.textContent = cuenta;
+        fetchDatos();
+    });
+}
+
+setInterval(() => {
+    if (enPausa) return;
+    cuenta -= 1;
+    const segActual = document.getElementById('segundos-restantes');
+    if (segActual) segActual.textContent = cuenta > 0 ? cuenta : (INTERVALO / 1000);
+    if (cuenta <= 0) cuenta = INTERVALO / 1000;
+}, 1000);
+
+renderizarChartPrincipal();
+fetchDatos();
+setInterval(() => {
+    if (!enPausa) fetchDatos();
+}, INTERVALO);
+</script>

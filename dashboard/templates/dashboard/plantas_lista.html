@@ -45,6 +45,18 @@
 {% endblock %}
 
 {% block content %}
+    <nav class="cockpit-crumb" aria-label="Ruta actual">
+        <a href="{% url 'inicio_dashboard' %}">Monitor</a>
+        {% if instalacion.invernadero %}
+        <span class="sep">/</span>
+        <a href="{% url 'inicio_dashboard' %}?invernadero={{ instalacion.invernadero.pk }}">{{ instalacion.invernadero.nombre }}</a>
+        {% endif %}
+        <span class="sep">/</span>
+        <a href="{% url 'detalle_instalacion' instalacion.pk %}">{{ instalacion.nombre }}</a>
+        <span class="sep">/</span>
+        <span class="current">Plantas</span>
+    </nav>
+
     <!-- Barra Cockpit de estado y filtros rápidos -->
     <div class="cockpit-bar">
         <div class="cockpit-kpis">
@@ -192,8 +204,10 @@
             </div>
             {% endwith %}
             {% empty %}
-            <div class="text-center py-5">
-                <p class="t-muted mb-3">Aún no hay plantas registradas en esta instalación.</p>
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="bi bi-flower1"></i></div>
+                <div class="empty-state-title">Sin plantas registradas en esta torre</div>
+                <div class="empty-state-sub">Registra la primera planta para controlar su ciclo fenológico, fecha de cosecha y sensores.</div>
                 {% if perms.telemetria.add_planta %}
                 <a href="{% url 'crear_planta' instalacion.pk %}" class="btn btn-primary-ap btn-sm">
                     <i class="bi bi-plus-lg"></i>Agregar la primera planta

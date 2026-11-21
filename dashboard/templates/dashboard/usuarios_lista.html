@@ -5,6 +5,12 @@
 {% block main_class %}cockpit-main{% endblock %}
 
 {% block content %}
+    <nav class="cockpit-crumb" aria-label="Ruta actual">
+        <a href="{% url 'inicio_dashboard' %}">Monitor</a>
+        <span class="sep">/</span>
+        <span class="current">Usuarios y permisos</span>
+    </nav>
+
     <!-- Barra Cockpit de usuarios y roles -->
     <div class="cockpit-bar">
         <div class="cockpit-kpis">

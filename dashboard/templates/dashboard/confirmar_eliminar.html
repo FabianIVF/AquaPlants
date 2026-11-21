@@ -2,23 +2,36 @@
 
 {% block title %}Confirmar eliminación — AquaPlants{% endblock %}
 
+{% block main_class %}cockpit-main{% endblock %}
+
 {% block content %}
-<div class="mx-auto" style="max-width: 520px;">
-    <div class="panel">
-        <div class="panel-head">
-            <h2 class="panel-title">Confirmar eliminación</h2>
-        </div>
-        <div class="panel-body">
-            <p class="mb-2">
+<div class="mx-auto" style="max-width: 540px;">
+    <nav class="cockpit-crumb" aria-label="Ruta actual">
+        <a href="{% url 'inicio_dashboard' %}">Monitor</a>
+        <span class="sep">/</span>
+        <span class="current">Confirmar eliminación</span>
+    </nav>
+
+    <div class="panel" style="border-left: 3px solid var(--ap-danger);">
+        <div class="panel-body p-4 text-center">
+            <div class="empty-state-icon mx-auto" style="background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.4);color:#fb7185;">
+                <i class="bi bi-exclamation-triangle"></i>
+            </div>
+            <h1 class="panel-title mb-2" style="font-size:1.05rem;">Confirmar eliminación</h1>
+            <p class="mb-2" style="font-size:0.9rem;">
                 Estás a punto de eliminar permanentemente: <strong>{{ elemento }}</strong>.
             </p>
-            <p class="t-muted mb-4" style="font-size:0.83rem;">Esta acción no se puede deshacer.</p>
+            <p class="t-muted mb-4" style="font-size:0.8rem;">
+                Esta acción no se puede deshacer y eliminará los registros vinculados.
+            </p>
 
             <form method="post">
                 {% csrf_token %}
-                <div class="d-flex justify-content-end gap-2 pt-3" style="border-top:1px solid var(--ap-border);">
-                    <a href="{{ volver_url }}" class="btn btn-ghost">Cancelar</a>
-                    <button type="submit" class="btn btn-danger-ap"><i class="bi bi-trash3"></i>Sí, eliminar</button>
+                <div class="d-flex justify-content-center gap-2 pt-3" style="border-top:1px solid var(--ap-border);">
+                    <a href="{{ volver_url }}" class="btn btn-ghost px-3">Cancelar</a>
+                    <button type="submit" class="btn btn-danger-ap px-3">
+                        <i class="bi bi-trash3"></i>Sí, eliminar
+                    </button>
                 </div>
             </form>
         </div>

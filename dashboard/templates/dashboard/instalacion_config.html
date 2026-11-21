@@ -19,6 +19,18 @@
 {% endblock %}
 
 {% block content %}
+    <nav class="cockpit-crumb" aria-label="Ruta actual">
+        <a href="{% url 'inicio_dashboard' %}">Monitor</a>
+        {% if instalacion.invernadero %}
+        <span class="sep">/</span>
+        <a href="{% url 'inicio_dashboard' %}?invernadero={{ instalacion.invernadero.pk }}">{{ instalacion.invernadero.nombre }}</a>
+        {% endif %}
+        <span class="sep">/</span>
+        <a href="{% url 'detalle_instalacion' instalacion.pk %}">{{ instalacion.nombre }}</a>
+        <span class="sep">/</span>
+        <span class="current">Configuración</span>
+    </nav>
+
     <form method="post" novalidate>
         {% csrf_token %}
 
@@ -41,11 +53,6 @@
             </div>
 
             <div class="cockpit-controls">
-                {% if perms.telemetria.delete_instalacion %}
-                <a href="{% url 'eliminar_instalacion' instalacion.pk %}" class="btn btn-ghost-danger btn-sm">
-                    <i class="bi bi-trash3"></i>Eliminar torre
-                </a>
-                {% endif %}
                 <a href="{{ volver_url }}" class="btn btn-ghost btn-sm">Cancelar</a>
                 <button type="submit" class="btn btn-primary-ap btn-sm px-3">
                     <i class="bi bi-check2"></i>Guardar cambios
@@ -97,6 +104,15 @@
                         </div>
                     </div>
                     {% for error in form.activa.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+                    {% if perms.telemetria.delete_instalacion %}
+                    <div class="mt-4 pt-3 d-flex align-items-center justify-content-between gap-2" style="border-top:1px solid var(--ap-border);">
+                        <span class="t-muted" style="font-size:0.75rem;">Zona de riesgo · acción irreversible</span>
+                        <a href="{% url 'eliminar_instalacion' instalacion.pk %}" class="btn btn-ghost-danger btn-sm">
+                            <i class="bi bi-trash3"></i>Eliminar torre
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 

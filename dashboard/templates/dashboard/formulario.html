@@ -2,52 +2,87 @@
 
 {% block title %}{{ titulo }} — AquaPlants{% endblock %}
 
-{% block content %}
-<div class="mx-auto" style="max-width: 740px;">
-    <div class="panel">
-        <div class="panel-head">
-            <h1 class="panel-title" style="font-size:1.05rem;">{{ titulo }}</h1>
-            <a href="{{ volver_url }}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i>Cancelar</a>
-        </div>
-        <div class="panel-body" style="padding:1.5rem;">
-            <p class="t-muted mb-4" style="font-size:0.85rem;">{{ descripcion }}</p>
+{% block main_class %}cockpit-main{% endblock %}
 
-            <form method="post" novalidate>
-                {% csrf_token %}
+{% block content %}
+<div class="mx-auto" style="max-width: 820px;">
+    <nav class="cockpit-crumb" aria-label="Ruta actual">
+        <a href="{% url 'inicio_dashboard' %}">Monitor</a>
+        {% if instalacion %}
+        <span class="sep">/</span>
+        <a href="{% url 'detalle_instalacion' instalacion.pk %}">{{ instalacion.nombre }}</a>
+        {% endif %}
+        <span class="sep">/</span>
+        <span class="current">{{ titulo }}</span>
+    </nav>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <!-- Cabecera Cockpit coherente -->
+        <div class="cockpit-bar">
+            <div class="cockpit-kpis">
+                <div class="cockpit-kpi">
+                    <i class="bi bi-pencil-square t-accent"></i>
+                    <strong style="font-size:0.95rem;">{{ titulo }}</strong>
+                </div>
+            </div>
+            <div class="cockpit-controls">
+                <a href="{{ volver_url }}" class="btn btn-ghost btn-sm">Cancelar</a>
+                <button type="submit" class="btn btn-primary-ap btn-sm px-3">
+                    <i class="bi bi-check2"></i>Guardar cambios
+                </button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-head py-2 px-3">
+                <p class="panel-sub mb-0">{{ descripcion }}</p>
+            </div>
+            <div class="panel-body" style="padding:1.25rem 1.35rem;">
+                {% if form.non_field_errors %}
+                    {% for error in form.non_field_errors %}
+                        <div class="ap-alert ap-alert-error mb-3">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
 
                 {% for field in form %}
                 <div class="mb-3">
                     {% if field.name == "sensores_seleccionados" or field.name == "sensores_planta" or field.name == "instalaciones" %}
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="form-label mb-0">{{ field.label }}</label>
-                            <div class="d-flex gap-1">
-                                <button type="button" class="btn btn-ghost btn-sm" style="padding:.15rem .55rem;font-size:.75rem;" onclick="document.querySelectorAll('input[name={{ field.name }}]').forEach(el => el.checked = true);">Marcar todos</button>
-                                <button type="button" class="btn btn-ghost btn-sm" style="padding:.15rem .55rem;font-size:.75rem;" onclick="document.querySelectorAll('input[name={{ field.name }}]').forEach(el => el.checked = false);">Desmarcar todos</button>
-                            </div>
-                        </div>
-                        {% if field.help_text %}
-                            <div class="form-text mb-2">{{ field.help_text }}</div>
-                        {% endif %}
-                        <div class="row g-2">
-                            {% for choice in field %}
-                            <div class="col-12 col-md-6">
-                                <div class="check-tile">
-                                    <div class="form-check m-0 d-flex align-items-center w-100">
-                                        {{ choice.tag }}
-                                        <label class="form-check-label ms-2 flex-grow-1" style="font-size:0.84rem;cursor:pointer;" for="{{ choice.id_for_label }}">
-                                            {{ choice.choice_label }}
-                                        </label>
-                                    </div>
+                        <div class="p-3 rounded" style="background:var(--ap-surface-2);border:1px solid var(--ap-border);">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+                                <label class="form-label mb-0 fw-semibold">{{ field.label }}</label>
+                                <div class="d-flex gap-1">
+                                    <button type="button" class="cockpit-pill" onclick="document.querySelectorAll('input[name={{ field.name }}]').forEach(el => el.checked = true);">Marcar todos</button>
+                                    <button type="button" class="cockpit-pill" onclick="document.querySelectorAll('input[name={{ field.name }}]').forEach(el => el.checked = false);">Desmarcar</button>
                                 </div>
                             </div>
-                            {% endfor %}
+                            {% if field.help_text %}
+                                <div class="form-text mb-2">{{ field.help_text }}</div>
+                            {% endif %}
+                            <div class="row g-2">
+                                {% for choice in field %}
+                                <div class="col-12 col-md-6">
+                                    <div class="check-tile" style="background:var(--ap-surface);">
+                                        <div class="form-check m-0 d-flex align-items-center w-100">
+                                            {{ choice.tag }}
+                                            <label class="form-check-label ms-2 flex-grow-1" style="font-size:0.84rem;cursor:pointer;" for="{{ choice.id_for_label }}">
+                                                {{ choice.choice_label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
                         </div>
                     {% elif field.field.widget.input_type == "checkbox" %}
-                        <div class="form-check form-switch mt-2">
-                            {{ field }}
-                            <label class="form-check-label ms-2" style="font-weight:500;" for="{{ field.id_for_label }}">
-                                {{ field.label }}
-                            </label>
+                        <div class="check-tile justify-content-between" style="height:auto;">
+                            <div class="form-check form-switch m-0 d-flex align-items-center w-100">
+                                {{ field }}
+                                <label class="form-check-label ms-2" style="font-weight:500;cursor:pointer;" for="{{ field.id_for_label }}">
+                                    {{ field.label }}
+                                </label>
+                            </div>
                         </div>
                     {% elif field.name == "sensor" %}
                         <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
@@ -72,18 +107,12 @@
                 </div>
                 {% endfor %}
 
-                {% if form.non_field_errors %}
-                    {% for error in form.non_field_errors %}
-                        <div class="field-error">{{ error }}</div>
-                    {% endfor %}
-                {% endif %}
-
                 <div class="d-flex justify-content-end gap-2 mt-4 pt-3" style="border-top:1px solid var(--ap-border);">
                     <a href="{{ volver_url }}" class="btn btn-ghost">Cancelar</a>
                     <button type="submit" class="btn btn-primary-ap px-4">Guardar cambios</button>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 </div>
 {% endblock %}

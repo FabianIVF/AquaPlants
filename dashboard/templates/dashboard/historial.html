@@ -25,7 +25,7 @@
     .hist-sensor-card:last-child { border-bottom: 0; }
     .hist-sensor-card:hover { background: var(--ap-surface-2); }
     .hist-sensor-card.active {
-        background: rgba(52, 163, 124, 0.08);
+        background: rgba(16, 185, 129, 0.10);
         box-shadow: inset 3px 0 0 var(--ap-accent);
     }
     @media (max-width: 1199.98px) {
@@ -35,6 +35,18 @@
 {% endblock %}
 
 {% block content %}
+    <nav class="cockpit-crumb" aria-label="Ruta actual">
+        <a href="{% url 'inicio_dashboard' %}">Monitor</a>
+        {% if instalacion.invernadero %}
+        <span class="sep">/</span>
+        <a href="{% url 'inicio_dashboard' %}?invernadero={{ instalacion.invernadero.pk }}">{{ instalacion.invernadero.nombre }}</a>
+        {% endif %}
+        <span class="sep">/</span>
+        <a href="{% url 'detalle_instalacion' instalacion.pk %}">{{ instalacion.nombre }}</a>
+        <span class="sep">/</span>
+        <span class="current">Historial</span>
+    </nav>
+
     <!-- Barra Cockpit de resumen e historial -->
     <div class="cockpit-bar">
         <div class="cockpit-kpis">

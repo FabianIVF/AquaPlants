@@ -19,61 +19,59 @@
             <i class="bi bi-chevron-right" style="font-size:0.7rem;"></i>
         </div>
 
-        <a href="{% url 'inicio_dashboard' %}" class="yt-item {% if not filtro_inv %}active{% endif %}" title="Todos los sistemas">
+        <a href="{% url 'inicio_dashboard' %}" class="yt-item {% if not filtro_inv %}active{% endif %}" title="Todos los sistemas ({{ total_instalaciones }})">
             <i class="bi bi-grid"></i>
             <span class="yt-text flex-grow-1">Todos</span>
             <span class="yt-count yt-text">{{ total_instalaciones }}</span>
         </a>
 
-        {% for inv in invernaderos_filtro %}
-        <a href="{% url 'inicio_dashboard' %}?invernadero={{ inv.pk }}" class="yt-item {% if filtro_inv == inv.pk|stringformat:'s' %}active{% endif %}" title="{{ inv.nombre }}">
-            <i class="bi bi-buildings"></i>
+        {% for g in grupos_sidebar %}
+        {% with inv=g.invernadero %}
+        <a href="{% url 'inicio_dashboard' %}?invernadero={{ inv.pk }}" class="yt-item {% if filtro_inv == inv.pk|stringformat:'s' %}active{% endif %}" title="{{ inv.nombre }} ({{ g.num_torres }} torre(s))">
+            {% if g.estado == 'critico' %}
+                <i class="bi bi-buildings" style="color:var(--ap-danger);"></i>
+            {% elif g.estado == 'atencion' %}
+                <i class="bi bi-buildings" style="color:var(--ap-warning);"></i>
+            {% elif g.estado == 'optimo' %}
+                <i class="bi bi-buildings" style="color:var(--ap-accent);"></i>
+            {% else %}
+                <i class="bi bi-buildings"></i>
+            {% endif %}
             <span class="yt-text flex-grow-1 text-truncate">{{ inv.nombre }}</span>
+            <span class="yt-count yt-text">{{ g.num_torres }}</span>
         </a>
+        {% endwith %}
         {% endfor %}
 
         {% if tiene_sin_asignar %}
-        <a href="{% url 'inicio_dashboard' %}?invernadero=sin_asignar" class="yt-item {% if filtro_inv == 'sin_asignar' %}active{% endif %}" title="Torres independientes">
+        <a href="{% url 'inicio_dashboard' %}?invernadero=sin_asignar" class="yt-item {% if filtro_inv == 'sin_asignar' %}active{% endif %}" title="Torres independientes ({{ num_sin_asignar }})">
             <i class="bi bi-diagram-2"></i>
-            <span class="yt-text">Independientes</span>
+            <span class="yt-text flex-grow-1">Independientes</span>
+            <span class="yt-count yt-text">{{ num_sin_asignar }}</span>
         </a>
         {% endif %}
     </div>
 
     <hr class="yt-divider">
 
-    <!-- Sección de gestión y accesos rápidos -->
+    <!-- Acceso directo a módulos relacionados -->
     <div class="yt-section">
         <div class="yt-section-lbl yt-text">
-            <span>Gestión rápida</span>
+            <span>Atajos</span>
         </div>
-
-        {% if perms.telemetria.add_invernadero %}
-        <a href="{% url 'crear_invernadero' %}" class="yt-item" title="Nuevo invernadero">
-            <i class="bi bi-house-add"></i>
-            <span class="yt-text">Nuevo invernadero</span>
-        </a>
-        {% endif %}
-
-        {% if perms.telemetria.add_instalacion %}
-        <a href="{% url 'crear_instalacion' %}" class="yt-item" title="Nueva torre / maceta">
-            <i class="bi bi-plus-circle"></i>
-            <span class="yt-text">Nueva torre</span>
-        </a>
-        {% endif %}
 
         <a href="{% url 'lista_alertas' %}" class="yt-item" title="Centro de alertas">
             <i class="bi bi-bell"></i>
             <span class="yt-text flex-grow-1">Centro de alertas</span>
             {% if num_alertas > 0 %}
-            <span class="yt-count yt-text" style="border-color:rgba(212,87,79,.45);color:#e0807a;">{{ num_alertas }}</span>
+            <span class="yt-count yt-text" style="border-color:rgba(244,63,94,.45);color:#fb7185;">{{ num_alertas }}</span>
             {% endif %}
         </a>
 
         {% if request.user.is_superuser or perms.auth.view_user %}
         <a href="{% url 'lista_usuarios' %}" class="yt-item" title="Usuarios y accesos">
             <i class="bi bi-people"></i>
-            <span class="yt-text">Usuarios</span>
+            <span class="yt-text">Usuarios y roles</span>
         </a>
         {% endif %}
     </div>

@@ -54,6 +54,20 @@
         .t-danger { color: var(--ap-danger) !important; }
         .num { font-variant-numeric: tabular-nums; }
         .wrap { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
+        :focus-visible { outline: 2px solid var(--ap-accent); outline-offset: 2px; border-radius: 5px; }
+
+        /* Scrollbars oscuras coherentes en todo el sistema */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--ap-border-strong) var(--ap-bg);
+        }
+        *::-webkit-scrollbar { width: 7px; height: 7px; }
+        *::-webkit-scrollbar-track { background: var(--ap-bg); }
+        *::-webkit-scrollbar-thumb {
+            background: var(--ap-border-strong); border-radius: 999px;
+            border: 1px solid var(--ap-bg);
+        }
+        *::-webkit-scrollbar-thumb:hover { background: #3b6374; }
 
         /* ---------- Navegación ---------- */
         .app-nav {
@@ -274,14 +288,23 @@
         .auth-card .brand img { height: 44px; margin-bottom: 0.9rem; }
         .auth-card .brand p { margin: 0; color: var(--ap-muted); font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
 
-        /* ---------- Cockpit compartido de torres ---------- */
+        /* ---------- Cockpit compartido ---------- */
         .cockpit-main { padding-top: 0.9rem !important; padding-bottom: 1.25rem !important; }
         .cockpit-main .inst-header { margin-bottom: 0.65rem; }
         .cockpit-main .inst-tabs { margin-bottom: 0.85rem; padding-bottom: 0.45rem; }
+        .cockpit-crumb {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+            font-size: 0.76rem; color: var(--ap-muted); margin-bottom: 0.55rem;
+        }
+        .cockpit-crumb a { color: var(--ap-muted); transition: color .15s; }
+        .cockpit-crumb a:hover { color: var(--ap-text); }
+        .cockpit-crumb .sep { opacity: 0.45; }
+        .cockpit-crumb .current { color: var(--ap-text); font-weight: 500; }
         .cockpit-bar {
             display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-            gap: 0.65rem 1rem; padding: 0.55rem 0.9rem; margin-bottom: 0.85rem;
+            gap: 0.65rem 1rem; padding: 0.58rem 0.95rem; margin-bottom: 0.85rem;
             background: var(--ap-surface); border: 1px solid var(--ap-border); border-radius: var(--ap-radius);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
         }
         .cockpit-kpis { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.15rem; }
         .cockpit-kpi { display: flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; }
@@ -291,7 +314,7 @@
         }
         .cockpit-sep { width: 1px; height: 18px; background: var(--ap-border-strong); }
         .cockpit-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-left: auto; }
-        .cockpit-scroll { max-height: calc(100vh - 195px); overflow-y: auto; }
+        .cockpit-scroll { max-height: calc(100vh - 205px); overflow-y: auto; }
         .cockpit-scroll thead th { position: sticky; top: 0; z-index: 2; }
         .cockpit-pill {
             border: 1px solid var(--ap-border-strong); background: transparent; color: var(--ap-muted);
@@ -300,6 +323,107 @@
         }
         .cockpit-pill:hover { color: var(--ap-text); background: var(--ap-surface-2); }
         .cockpit-pill.active { color: #fff; background: var(--ap-accent); border-color: var(--ap-accent); }
+        .cockpit-hint {
+            max-width: 320px; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; font-size: 0.78rem; color: var(--ap-muted);
+        }
+
+        /* ---------- Grilla de telemetría Cockpit (Torre y Planta) ---------- */
+        .cockpit-grid {
+            display: grid; grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr);
+            gap: 0.85rem; align-items: stretch;
+        }
+        .cockpit-left { display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; }
+        .sensor-matrix {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 0.55rem;
+        }
+        .sensor-tile {
+            text-align: left; background: var(--ap-surface); border: 1px solid var(--ap-border);
+            border-radius: var(--ap-radius); padding: 0.65rem 0.78rem; cursor: pointer;
+            transition: border-color .15s, background-color .15s, box-shadow .15s;
+            color: var(--ap-text); width: 100%;
+        }
+        .sensor-tile:hover { border-color: var(--ap-border-strong); background: var(--ap-surface-2); }
+        .sensor-tile.active {
+            border-color: var(--ap-accent); background: rgba(16, 185, 129, 0.08);
+            box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.3);
+        }
+        .sensor-tile.tile-out { border-color: rgba(244, 63, 94, 0.6); }
+        .sensor-tile-head {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 0.35rem; margin-bottom: 0.25rem;
+        }
+        .sensor-tile-name {
+            font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+            color: var(--ap-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .sensor-tile-val { font-size: 1.45rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .sensor-tile-foot {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 0.35rem; margin-top: 0.35rem; font-size: 0.69rem; color: var(--ap-muted);
+        }
+        .chart-panel { flex: 1; display: flex; flex-direction: column; min-height: 295px; }
+        .chart-pills { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+        .chart-pill {
+            border: 1px solid var(--ap-border-strong); background: transparent; color: var(--ap-muted);
+            font-size: 0.72rem; font-weight: 500; padding: 0.2rem 0.52rem; border-radius: 5px;
+            cursor: pointer; transition: all .15s;
+        }
+        .chart-pill:hover { color: var(--ap-text); background: var(--ap-surface-2); }
+        .chart-pill.active { color: #fff; background: var(--ap-accent); border-color: var(--ap-accent); }
+        .chart-canvas-wrap {
+            position: relative; flex: 1; min-height: 215px; max-height: 255px;
+            padding: 0.7rem 0.9rem 0.6rem;
+        }
+        .audit-panel { display: flex; flex-direction: column; min-width: 0; height: 100%; }
+        .audit-tabs {
+            display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0.55rem 0.75rem;
+            border-bottom: 1px solid var(--ap-border); background: var(--ap-surface);
+        }
+        .audit-tab-btn {
+            display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid transparent;
+            background: transparent; color: var(--ap-muted); font-size: 0.78rem; font-weight: 500;
+            padding: 0.32rem 0.62rem; border-radius: 6px; cursor: pointer; transition: all .15s;
+        }
+        .audit-tab-btn:hover { color: var(--ap-text); background: var(--ap-surface-2); }
+        .audit-tab-btn.active {
+            color: var(--ap-text); background: var(--ap-surface-2);
+            border-color: var(--ap-border-strong); box-shadow: inset 0 -2px 0 var(--ap-accent);
+        }
+        .audit-body { flex: 1; min-height: 360px; max-height: 445px; overflow-y: auto; }
+        .audit-pane { display: none; height: 100%; }
+        .audit-pane.active { display: block; }
+        .audit-foot {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.5rem 0.85rem; border-top: 1px solid var(--ap-border);
+            font-size: 0.76rem; color: var(--ap-muted);
+        }
+        .alert-feed-item {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 0.6rem; padding: 0.62rem 0.9rem; border-bottom: 1px solid var(--ap-border); font-size: 0.8rem;
+        }
+        .alert-feed-item:last-child { border-bottom: 0; }
+        @media (max-width: 1199.98px) {
+            .cockpit-grid { grid-template-columns: 1fr; }
+            .audit-body { max-height: 380px; }
+        }
+        @media (max-width: 767.98px) {
+            .cockpit-hint { display: none; }
+            .sensor-matrix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        /* Estado vacío unificado con icono y contexto */
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 2.5rem 1.25rem; color: var(--ap-muted);
+        }
+        .empty-state-icon {
+            width: 44px; height: 44px; border-radius: 50%; margin-bottom: 0.75rem;
+            display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem;
+            background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.28); color: var(--ap-accent);
+        }
+        .empty-state-title { font-size: 0.92rem; font-weight: 600; color: var(--ap-text); margin-bottom: 0.25rem; }
+        .empty-state-sub { font-size: 0.8rem; color: var(--ap-muted); max-width: 42ch; margin-bottom: 0.9rem; }
 
         /* ---------- Menú lateral vertical estilo YouTube ---------- */
         .yt-toggle-btn {
@@ -348,6 +472,12 @@
             box-shadow: inset 3px 0 0 var(--ap-accent);
         }
         .yt-item.active i { color: var(--ap-accent); }
+        .yt-item.yt-action {
+            border: 1px dashed var(--ap-border-strong); background: rgba(16, 185, 129, 0.04);
+            color: var(--ap-text); margin-bottom: 0.25rem;
+        }
+        .yt-item.yt-action i { color: var(--ap-accent); }
+        .yt-item.yt-action:hover { border-color: var(--ap-accent); background: rgba(16, 185, 129, 0.1); }
         .yt-count {
             font-size: 0.7rem; font-weight: 600; padding: 0.08rem 0.45rem;
             border-radius: 999px; background: var(--ap-surface); border: 1px solid var(--ap-border-strong);
@@ -376,16 +506,20 @@
                 display: block; position: fixed; inset: 58px 0 0 0; z-index: 1035;
                 background: rgba(0, 0, 0, 0.55);
             }
-            .yt-main { padding: 1rem; }
+            .yt-main { padding: 0.9rem 1rem; }
         }
 
         @media (max-width: 767.98px) {
+            .app-nav-left { gap: 0.65rem; }
+            .app-brand img { height: 28px; }
+            .app-nav-link { padding: 0.3rem 0.5rem; font-size: 0.8rem; }
             .cockpit-sep { display: none; }
             .cockpit-scroll { max-height: none; }
         }
         @media (max-width: 576px) {
             .wrap { padding: 0 1rem; }
-            .app-user { display: none; }
+            .app-user, .app-nav-logout-txt { display: none; }
+            .app-nav-link i { margin-right: 0.15rem !important; }
         }
     </style>
     {% block extra_head %}{% endblock %}
@@ -404,10 +538,10 @@
                     <img src="{% static 'Icono.png' %}" alt="AquaPlants">
                 </a>
                 <nav class="app-nav-links">
-                    <a href="{% url 'inicio_dashboard' %}" class="app-nav-link {% if request.resolver_match.url_name == 'inicio_dashboard' %}active{% endif %}">
+                    <a href="{% url 'inicio_dashboard' %}" class="app-nav-link {% if request.resolver_match.url_name != 'lista_alertas' and 'usuario' not in request.resolver_match.url_name %}active{% endif %}">
                         <i class="bi bi-grid me-1"></i>Monitor
                     </a>
-                    <a href="{% url 'lista_alertas' %}" class="app-nav-link {% if 'alerta' in request.resolver_match.url_name %}active{% endif %}">
+                    <a href="{% url 'lista_alertas' %}" class="app-nav-link {% if request.resolver_match.url_name == 'lista_alertas' %}active{% endif %}">
                         <i class="bi bi-bell me-1"></i>Alertas
                         {% if global_num_alertas > 0 %}
                         <span class="count-badge">{{ global_num_alertas }}</span>
@@ -422,7 +556,9 @@
             </div>
             <div class="app-nav-right">
                 <span class="app-user">Sesión: <strong>{{ request.user.username }}</strong></span>
-                <a href="/logout/" class="btn btn-ghost btn-sm"><i class="bi bi-box-arrow-right"></i>Cerrar sesión</a>
+                <a href="/logout/" class="btn btn-ghost btn-sm" title="Cerrar sesión">
+                    <i class="bi bi-box-arrow-right"></i><span class="app-nav-logout-txt">Cerrar sesión</span>
+                </a>
             </div>
         </div>
     </header>

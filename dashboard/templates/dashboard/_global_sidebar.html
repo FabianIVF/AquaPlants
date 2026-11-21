@@ -137,20 +137,20 @@
             <span>Accesos rápidos</span>
         </div>
 
-        <a href="{% url 'crear_usuario' %}" class="yt-item" title="Nuevo usuario">
+        <a href="{% url 'crear_usuario' %}" class="yt-item yt-action" title="Nuevo usuario">
             <i class="bi bi-person-plus"></i>
             <span class="yt-text">Nuevo usuario</span>
         </a>
 
         {% if perms.telemetria.add_instalacion %}
-        <a href="{% url 'crear_instalacion' %}" class="yt-item" title="Nueva torre">
+        <a href="{% url 'crear_instalacion' %}" class="yt-item yt-action" title="Nueva torre">
             <i class="bi bi-plus-circle"></i>
             <span class="yt-text">Nueva torre</span>
         </a>
         {% endif %}
 
         {% if perms.telemetria.add_invernadero %}
-        <a href="{% url 'crear_invernadero' %}" class="yt-item" title="Nuevo invernadero">
+        <a href="{% url 'crear_invernadero' %}" class="yt-item yt-action" title="Nuevo invernadero">
             <i class="bi bi-house-add"></i>
             <span class="yt-text">Nuevo invernadero</span>
         </a>
