@@ -59,7 +59,7 @@ El sistema está diseñado bajo una arquitectura modular desacoplada:
   - **Encargado de cultivo:** Lectura completa del monitoreo y gestión CRUD de **reglas de alerta** (`ReglaAlerta`), sin permisos para crear, editar ni eliminar instalaciones (HTTP 403 Forbidden).
   - **Supervisor:** Solo lectura estricta (`view_*` en todo el dominio). No puede alterar huertos ni reglas de alerta (HTTP 403 Forbidden garantizado por decoradores y pruebas).
   - **Dispositivo IoT (`iot_device`):** Cuenta de servicio con permiso de inserción (`add_medicion`) y lectura de inventario (`view_sensor`, `view_instalacion`) vía API REST.
-* **Interfaz de Usuario de Nivel SaaS:** Libre de emojis, tipografía optimizada *Inter*, iconografía vectorial *Bootstrap Icons*, microinteracciones y paleta de colores contenida (`#34a37c` acento).
+* **Interfaz de Usuario de Nivel SaaS:** Libre de emojis, tipografía optimizada *Inter*, iconografía vectorial *Bootstrap Icons*, microinteracciones, cockpit responsivo y paleta botánica viva (`#10b981` esmeralda + cian hidropónico).
 
 ---
 
@@ -210,15 +210,14 @@ Alineación completa entre necesidades e historias de usuario (ES1), diseño y a
 Para validar la integridad de toda la solución técnica, ejecuta la suite de pruebas nativa:
 
 ```bash
-python manage.py test telemetria -v 2
+python manage.py test -v 2
 ```
 
 ### Resumen del Reporte Oficial:
-* **Total de Pruebas:** 27
+* **Total de Pruebas:** 44
 * **Fallos (Failures):** 0
 * **Errores (Errors):** 0
 * **Tasa de Éxito:** **100% OK**
-* **Detalle exhaustivo:** Consulta el archivo [InformePruebas.md](file:///F:/WorkspaceAquaPlants/InformePruebas.md).
 
 ---
 
